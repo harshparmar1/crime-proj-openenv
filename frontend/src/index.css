@@ -8,6 +8,15 @@ body {
   min-height: 100vh;
 }
 
+html:not(.dark) body {
+  background: radial-gradient(circle at top left, #e0f2fe, #f8fafc 55%);
+  color: #0f172a;
+}
+
 .glass {
   @apply bg-glass backdrop-blur-xl border border-white/10 shadow-glow rounded-xl;
+}
+
+html:not(.dark) .glass {
+  @apply bg-white/80 border-slate-200/80 shadow-lg text-slate-900;
 }

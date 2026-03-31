@@ -8,7 +8,14 @@ import { motion } from "framer-motion";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ username: "", email: "", password: "", state: "Maharashtra" });
+  const [form, setForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    state: "Maharashtra",
+    role: "citizen",
+    police_register_secret: ""
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -87,6 +94,36 @@ export default function RegisterPage() {
             </button>
           </div>
         </div>
+
+        <div>
+          <label className="block text-xs text-slate-300 mb-2">Account role</label>
+          <select
+            className="w-full p-3 bg-slate-900/60 rounded-xl border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+            value={form.role}
+            onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
+          >
+            <option value="citizen" className="bg-slate-950">
+              Citizen
+            </option>
+            <option value="police" className="bg-slate-950">
+              Police
+            </option>
+          </select>
+        </div>
+
+        {form.role === "police" && (
+          <div>
+            <label className="block text-xs text-slate-300 mb-2">Police registration secret</label>
+            <input
+              className="w-full p-3 bg-slate-900/60 rounded-xl border border-white/10 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+              placeholder="Provided by your administrator"
+              type="password"
+              value={form.police_register_secret}
+              onChange={(e) => setForm((p) => ({ ...p, police_register_secret: e.target.value }))}
+            />
+            <p className="text-[11px] text-slate-500 mt-1">Or set ALLOW_OPEN_POLICE_REGISTER=true on the server for open enrollment.</p>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs text-slate-300 mb-2">State</label>

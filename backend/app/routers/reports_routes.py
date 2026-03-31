@@ -1,0 +1,154 @@
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timezone
+from typing import Annotated, Literal, Optional
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from ..core.state_regions import STATE_REGIONS
+from ..db import Report, User
+from ..deps import get_current_user, get_db, optional_current_user
+from ..services.geo import approximate_lat_lng
+from ..services.notify_service import broadcast_targets_for_report, create_notification
+from ..services.ws_hub import hub
+
+router = APIRouter(tags=["reports"])
+
+
+@router.post("/report")
+async def create_report(
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[Optional[User], Depends(optional_current_user)],
+    state: str = Form(...),
+    region: str = Form(...),
+    time: str = Form(...),
+    crime_type: str = Form(...),
+    actor_type: str = Form(...),
+    weapon: str = Form(...),
+    vehicle: str = Form(...),
+    description: str = Form(...),
+    phone: str = Form(...),
+    vehicle_selection: str = Form(...),
+    file: Optional[UploadFile] = File(None),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
+):
+    if state not in STATE_REGIONS:
+        raise HTTPException(status_code=400, detail="Invalid state")
+    if region not in STATE_REGIONS[state]:
+        raise HTTPException(status_code=400, detail="Invalid region for state")
+
+    file_name = None
+    file_content_type = None
+    file_bytes = None
+    if file and file.filename:
+        file_name = file.filename
+        file_content_type = file.content_type
+        file_bytes = await file.read()
+
+    public_id = str(uuid.uuid4())
+    lat, lng = latitude, longitude
+    if lat is None or lng is None:
+        lat, lng = approximate_lat_lng(state, region)
+
+    row = Report(
+        public_id=public_id,
+        state=state,
+        region=region,
+        time=time,
+        crime_type=crime_type,
+        actor_type=actor_type,
+        weapon=weapon,
+        vehicle=vehicle,
+        description=description,
+        phone=phone,
+        vehicle_selection=vehicle_selection,
+        status="pending",
+        latitude=lat,
+        longitude=lng,
+        user_email=user.email if user else None,
+        is_panic=False,
+        file_name=file_name,
+        file_content_type=file_content_type,
+        file_bytes=file_bytes,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(row)
+    db.commit()
+
+    await hub.broadcast(
+        {
+            "type": "crime_report",
+            "public_id": public_id,
+            "state": state,
+            "region": region,
+            "crime_type": crime_type,
+            "latitude": lat,
+            "longitude": lng,
+            "ts": row.created_at.isoformat(),
+        }
+    )
+
+    for email in broadcast_targets_for_report(db):
+        create_notification(
+            db,
+            user_email=email,
+            title="New crime report",
+            body=f"{crime_type} in {region}, {state}",
+            kind="crime_report",
+            report_public_id=public_id,
+        )
+
+    return {"status": "success", "message": "Submitted successfully", "report_id": public_id}
+
+
+@router.get("/reports/tracking")
+def list_my_reports(
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    q = db.query(Report).filter(Report.user_email == user.email).order_by(Report.created_at.desc())
+    return [
+        {
+            "report_id": r.public_id,
+            "status": r.status,
+            "state": r.state,
+            "region": r.region,
+            "crime_type": r.crime_type,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in q.limit(100).all()
+    ]
+
+
+class StatusBody(BaseModel):
+    status: Literal["pending", "investigating", "resolved"]
+
+
+@router.patch("/reports/{public_id}/status")
+def patch_report_status(
+    public_id: str,
+    body: StatusBody,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    if user.role not in ("police", "admin"):
+        raise HTTPException(status_code=403, detail="Only police or admin can update status")
+    r = db.query(Report).filter(Report.public_id == public_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Report not found")
+    r.status = body.status
+    db.commit()
+    if r.user_email:
+        create_notification(
+            db,
+            user_email=r.user_email,
+            title="Report status updated",
+            body=f"Your report {public_id} is now {body.status}.",
+            kind="status_update",
+            report_public_id=public_id,
+        )
+    return {"status": "ok", "report_id": public_id, "new_status": body.status}

@@ -1,6 +1,6 @@
-import ast
+import json
 import os
-from typing import Dict
+from typing import Any, Dict
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -13,23 +13,25 @@ SYSTEM_PROMPT = """You are a policy agent for crime report triage.
 Respond with strict JSON having keys: classify_crime, assign_zone, escalate_case, ignore_case.
 classify_crime must be one of Theft, Robbery, Assault, Cybercrime, Fraud.
 assign_zone must be one of Low, Medium, High.
+escalate_case and ignore_case are booleans.
 """
 
 
-def infer_action(client: OpenAI, observation: Dict) -> Dict:
-    prompt = f"Observation: {observation}\nChoose the best action."
-    response = client.responses.create(
+def infer_action(client: OpenAI, observation: Dict[str, Any]) -> Dict[str, Any]:
+    chat = client.chat.completions.create(
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        input=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
         response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Observation: {observation}\nReturn JSON only."},
+        ],
+        temperature=0.2,
     )
-    return ast.literal_eval(response.output_text)
+    raw = chat.choices[0].message.content or "{}"
+    return json.loads(raw)
 
 
-def run_baseline():
+def run_baseline() -> None:
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY missing")
 
@@ -49,7 +51,7 @@ def run_baseline():
         print(f"step={step_count} reward={reward:.2f} info={info}")
 
     print("=" * 50)
-    print(f"Baseline total score: {total_score:.2f}")
+    print(f"Baseline total score: {total_score:.2f} (steps={step_count})")
 
 
 if __name__ == "__main__":

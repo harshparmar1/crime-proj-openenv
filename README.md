@@ -1,161 +1,127 @@
-<<<<<<< HEAD
----
-title: AI Crime Reporting & Analysis Dashboard
-emoji: ??
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 5173
-tags:
-  - openenv
-  - fastapi
-  - react
----
+# AI-Powered Real-Time Crime Intelligence Platform
 
-# AI Crime Reporting & Analysis Dashboard with OpenEnv Simulation
+Full-stack system combining **React + Tailwind**, **FastAPI**, **WebSockets**, **scikit-learn** risk models, **OpenCV** image heuristics (optional **YOLOv8**), **OpenEnv** RL evaluation hooks, and optional **OpenAI** for chat + baseline agents.
 
-Production-ready full-stack project for crime report intake, analytics, risk-zone generation, and RL-based decision simulation.
+## Architecture
 
-## Project Overview
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     React dashboard (Vite)                   │
+│  Leaflet map · WS live alerts · voice · panic · analytics  │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ REST + WebSocket
+┌───────────────────────────▼─────────────────────────────────┐
+│                      FastAPI (`backend/app`)                 │
+│  routers: auth, analytics, reports, ai, panic, chat,         │
+│           notifications, realtime, openenv                   │
+│  services: predict (RF), image, nlp, chat, geo, notify      │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────┐
+│   PostgreSQL / SQLite (SQLAlchemy) · JWT · bcrypt            │
+└─────────────────────────────────────────────────────────────┘
 
-This platform combines:
-- **React + Tailwind frontend** for interactive reporting and analytics
-- **FastAPI backend** for report ingestion and data aggregation
-- **OpenEnv RL module** to simulate a "Crime Data Processing & Decision Agent"
-- **Dockerized deployment** for local/production and Hugging Face Spaces container mode
-
-## Architecture Diagram
-
-```text
-[React Dashboard]
-     |
-     | HTTP (multipart/form-data + JSON)
-     v
-[FastAPI API] ---> [SQLite report store + uploads]
-     |
-     v
-[Analytics + Risk Zone Generator]
-
-[OpenEnv RL Environment] <--- [Baseline LLM Agent]
+OpenEnv (`openenv/`): `Observation`, `Action`, `Reward` + `CrimeOpenEnv.reset/step/state`
+Baseline agent: `openenv/baseline.py` (OpenAI JSON tool).
 ```
 
-## Monorepo Structure
+## Features
 
-- `frontend/` React + Tailwind + Recharts + Framer Motion dashboard
-- `backend/` FastAPI API and SQLite persistence
-- `openenv/` RL environment (`reset`, `step`, `state`) + baseline script
-- `docker/` compose setup for all services
+- **Real-time**: native WebSocket `/ws/live?token=<JWT>` broadcasts `crime_report` + `panic` payloads.
+- **AI prediction**: `POST /predict` and `GET /predict/zones` — RandomForest when enough data; frequency fallback otherwise.
+- **Image analysis**: `POST /ai/analyze-image` — OpenCV heuristics; if `ultralytics` + `yolov8n.pt` present, YOLO augments detections.
+- **Voice → structured**: browser **Web Speech API** → `POST /ai/nlp/extract`.
+- **Leaflet map**: `GET /map/incidents`, heat layer, markers, live blink on WS events.
+- **Analytics**: extended `GET /analytics` includes `peak_hours` bar series; region comparison chart in UI.
+- **Auth**: JWT (`Authorization: Bearer`), roles `citizen | police | admin`, bcrypt passwords for new users; legacy plaintext upgraded on login.
+- **Panic**: `POST /panic/` (auth required) — GPS + optional camera snapshot; notifies police/admin users.
+- **Chatbot**: `POST /chat/` — OpenAI when `OPENAI_API_KEY` set; else grounded on DB aggregates.
+- **Report tracking**: `GET /reports/tracking`, `PATCH /reports/{public_id}/status` (police/admin).
+- **Notifications**: `GET /notifications`, `POST /notifications/{id}/read`.
+- **OpenEnv HTTP**: `/openenv/reset`, `/openenv/step`, `/openenv/state`, `/openenv/dataset`.
+- **UX**: dark/light toggle, skeleton loaders, Framer Motion, toast + live alert feed.
 
-## OpenEnv Specification
+## Hugging Face Spaces (`openenv` tag)
 
-### Observation Space
-- `current_reports`
-- `selected_region`
-- `crime_stats`
-- `time_of_day`
+Use this repo on a **Docker** Space: the `Dockerfile` exposes the API on port **8000**. For a GPU image-analysis variant, extend the image with `ultralytics` and cache `yolov8n.pt` in the Space build. Tag releases with `openenv` for the MCP card.
 
-### Action Space
-- `classify_crime`
-- `assign_zone`
-- `escalate_case`
-- `ignore_case`
+## Environment
 
-### Reward Model
-- `accuracy_score`
-- `penalty`
-- `progress_score`
+### Backend (`backend/.env`)
 
-Reward policy:
-- +1 correct classification
-- +0.5 partial match
-- -1 wrong decision
-- -2 invalid action
-- loop penalty when same action repeats
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | `sqlite:///./crime_reports.db` (default) or Postgres DSN |
+| `JWT_SECRET` | **Required in production** (32+ chars) |
+| `OPENAI_API_KEY` | Enables `/chat` + `openenv/baseline.py` |
+| `OPENAI_MODEL` | Default `gpt-4o-mini` |
+| `POLICE_REGISTER_SECRET` | Secret for `role=police` self-registration |
+| `ALLOW_OPEN_POLICE_REGISTER` | `true` to allow police signup without secret |
+| `SMTP_*` | OTP email (optional) |
 
-## Tasks
+### Frontend
 
-1. **Task 1 (Easy):** classify crime correctly
-2. **Task 2 (Medium):** assign zone risk with partial credit
-3. **Task 3 (Hard):** full classify + zone + escalation pipeline
+- `VITE_API_BASE` — API origin (default `http://localhost:8000`)
+- `VITE_WS_BASE` — WebSocket origin (default `ws://localhost:8000`)
 
-## API Usage
+## Run locally
 
-### `POST /report`
-Multipart payload fields:
-- `state`, `region`, `time`, `crime_type`, `actor_type`, `weapon`, `vehicle`
-- `description`, `phone`, `numeric_input`, `vehicle_selection`
-- optional `file`
-
-### `GET /analytics`
-Returns aggregated counts for charts (`crime_type`, `actor_type`, `time`, `region`).
-
-### `GET /zones?state=...&region=...`
-Returns generated risk zones based on frequency and locality.
-
-## Local Setup
-
-### 1) Frontend
 ```bash
+# Backend
+cd backend
+python -m venv .venv
+. .venv/Scripts/activate   # Windows
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Frontend
 cd frontend
 npm install
 npm run dev
 ```
 
-### 2) Backend
+## Docker
+
 ```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+docker build -t crime-intelligence .
+docker run -p 8000:8000 crime-intelligence
 ```
 
-### 3) OpenEnv Baseline
+Serve the Vite `frontend/dist` via any static host or reverse-proxy to the API.
+
+## OpenEnv specification
+
+- **Observation**: `current_reports`, `selected_region`, `crime_stats`, `time_of_day`
+- **Action**: `classify_crime`, `assign_zone`, `escalate_case`, `ignore_case`
+- **Reward**: `accuracy_score`, `penalty`, `progress_score` — combined scalar in `step`
+- **API**: see `/openenv/*` routes
+
+### Baseline scores
+
 ```bash
 cd openenv
-pip install -r requirements.txt
-# set OPENAI_API_KEY in environment
+pip install openai python-dotenv
+export OPENAI_API_KEY=...
 python baseline.py
 ```
 
-## Docker Run
+## API quick reference
 
-```bash
-cd docker
-docker compose up --build
-```
+- `POST /auth/register` · `POST /auth/verify-otp` · `POST /auth/login`
+- `POST /report` (multipart, optional Bearer for `user_email` linkage)
+- `GET /analytics` · `GET /analytics/state-heatmap` · `GET /zones`
+- `GET /map/incidents` · `GET /map/region-stats` · `GET /geo/hint`
+- `POST /predict` · `GET /predict/zones`
+- `POST /ai/analyze-image` · `POST /ai/nlp/extract`
+- `POST /panic/` · `POST /chat/`
+- `GET /notifications/*` · WebSocket `/ws/live`
 
-Services:
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:8000`
-- OpenEnv baseline executes in `openenv` service
+## Security notes
 
-## Hugging Face Spaces Deployment
+- Change `JWT_SECRET`, use Postgres in production, TLS terminate at your edge proxy.
+- Image / panic features require explicit user consent for camera and location.
+- Police workflows should be audited; this codebase is a **starting point** for integration with real dispatch systems.
 
-This repo is ready for **Docker Spaces**:
-- `README.md` includes `sdk: docker`
-- Containerized architecture available via `docker/` setup
-- Tag used: `openenv`
+## License
 
-Suggested deployment: expose frontend container and proxy backend via internal network or merged container build.
-
-## Baseline Results
-
-Baseline script prints per-step reward and final cumulative score:
-
-```text
-step=1 reward=...
-step=2 reward=...
-...
-Baseline total score: ...
-```
-
-## UI/UX Highlights
-
-- Glassmorphism cards with shadows and rounded corners
-- Interactive India state map selection
-- Dynamic region + time input controls
-- Charts (Bar / Pie / Line) with live API data
-- Risk-zone cards with color-coded severity
-- Responsive layout for desktop/tablet/mobile
-=======
-# Project-1
->>>>>>> cb31f59757dd7bc5468fff23f039e41d7d86c8a9
+MIT (adapt as needed for your deployment).
