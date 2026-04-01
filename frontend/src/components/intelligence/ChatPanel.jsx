@@ -8,6 +8,14 @@ export function ChatPanel() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
 
+  const sanitizeBotText = (text) => {
+    const t = String(text || "");
+    if (t.includes("OpenAI error") || t.includes("RateLimitError") || t.includes("insufficient_quota")) {
+      return "AI guidance is temporarily unavailable. I can still guide you using local safety data. Share what happened, where, and when.";
+    }
+    return t;
+  };
+
   const send = async () => {
     const q = input.trim();
     if (!q) return;
@@ -15,9 +23,9 @@ export function ChatPanel() {
     setMessages((m) => [...m, { role: "user", text: q }]);
     try {
       const res = await apiPost("/chat/", { message: q });
-      setMessages((m) => [...m, { role: "bot", text: res.answer, meta: res.source }]);
+      setMessages((m) => [...m, { role: "bot", text: sanitizeBotText(res.answer), meta: res.source }]);
     } catch (e) {
-      setMessages((m) => [...m, { role: "bot", text: e.message, meta: "error" }]);
+      setMessages((m) => [...m, { role: "bot", text: sanitizeBotText(e.message), meta: "error" }]);
     }
   };
 

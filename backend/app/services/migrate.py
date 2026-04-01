@@ -48,6 +48,18 @@ def run_schema_migrations(engine: Engine) -> None:
                 else:
                     conn.execute(text("ALTER TABLE reports ADD COLUMN is_panic BOOLEAN NOT NULL DEFAULT false"))
 
+            if "voice_file_name" not in report_cols:
+                conn.execute(text("ALTER TABLE reports ADD COLUMN voice_file_name VARCHAR(255)"))
+            if "voice_content_type" not in report_cols:
+                conn.execute(text("ALTER TABLE reports ADD COLUMN voice_content_type VARCHAR(128)"))
+            if "voice_bytes" not in report_cols:
+                if engine.dialect.name == "sqlite":
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN voice_bytes BLOB"))
+                else:
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN voice_bytes BYTEA"))
+            if "voice_transcript" not in report_cols:
+                conn.execute(text("ALTER TABLE reports ADD COLUMN voice_transcript TEXT"))
+
             rows = conn.execute(text("SELECT id FROM reports WHERE public_id IS NULL OR public_id = ''")).fetchall()
             for (rid,) in rows:
                 conn.execute(

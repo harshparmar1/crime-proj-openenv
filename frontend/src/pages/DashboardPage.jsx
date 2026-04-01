@@ -34,7 +34,7 @@ import { CrimeMapLeaflet } from "../components/intelligence/CrimeMapLeaflet";
 import { PredictionPanel } from "../components/intelligence/PredictionPanel";
 import { VoiceFill } from "../components/intelligence/VoiceFill";
 import { PanicFab } from "../components/intelligence/PanicFab";
-import { ChatPanel } from "../components/intelligence/ChatPanel";
+import { Chatbot } from "../components/intelligence/Chatbot";
 import { NotificationBell } from "../components/intelligence/NotificationBell";
 import { ReportTracking } from "../components/intelligence/ReportTracking";
 import { Toast } from "../components/Toast";
@@ -72,6 +72,9 @@ export default function DashboardPage() {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [proofFileInputKey, setProofFileInputKey] = useState(0);
+  const [voiceBlob, setVoiceBlob] = useState(null);
+  const [voicePreviewUrl, setVoicePreviewUrl] = useState("");
+  const [lastSubmitInfo, setLastSubmitInfo] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [zones, setZones] = useState([]);
@@ -80,6 +83,7 @@ export default function DashboardPage() {
   const [mapBlinkId, setMapBlinkId] = useState(null);
   const [geoCoords, setGeoCoords] = useState(null);
   const [mapReload, setMapReload] = useState(0);
+  const [trackingTick, setTrackingTick] = useState(0);
 
   const regions = useMemo(() => STATE_REGIONS[selectedState] || [], [selectedState]);
 
@@ -154,6 +158,10 @@ export default function DashboardPage() {
     setProofFileInputKey((k) => k + 1);
     setGraphInput({ region: "", crime_type: "", actor_type: "" });
     setGeoCoords(null);
+    if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+    setVoiceBlob(null);
+    setVoicePreviewUrl("");
+    setLastSubmitInfo(null);
     notify("Dashboard reset");
   };
 
@@ -170,6 +178,9 @@ export default function DashboardPage() {
       return;
     }
     setPreviewUrl(URL.createObjectURL(next));
+    if (next.type.startsWith("audio/")) {
+      return;
+    }
     if (next.type.startsWith("image/")) {
       try {
         const res = await apiUpload("/ai/analyze-image", next);
@@ -228,15 +239,31 @@ export default function DashboardPage() {
         payload.append("longitude", String(geoCoords.lng));
       }
       if (file) payload.append("file", file);
+      if (voiceBlob) {
+        const ext = voiceBlob.type.includes("webm") ? "webm" : voiceBlob.type.includes("mp4") ? "m4a" : "webm";
+        payload.append("voice", voiceBlob, `voice-evidence.${ext}`);
+      }
 
       const res = await apiPost("/report", payload, true);
-      notify(res.report_id ? `Submitted ù ID ${res.report_id}` : "Submitted successfully", "success");
+      const submittedLabel = res.submitted_at
+        ? new Date(res.submitted_at).toLocaleString()
+        : new Date().toLocaleString();
+      notify(`Submitted ${submittedLabel} ? Incident: ${time} ${ampm} ? ID ${res.report_id || ""}`, "success");
+      setLastSubmitInfo({
+        id: res.report_id,
+        submittedAt: res.submitted_at || new Date().toISOString(),
+        incidentTime: `${time} ${ampm}`
+      });
       if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
       setFile(null);
       setPreviewUrl("");
+      setVoiceBlob(null);
+      setVoicePreviewUrl("");
       setProofFileInputKey((k) => k + 1);
       setForm((p) => ({ ...p, description: "", phone: "" }));
       setMapReload((k) => k + 1);
+      setTrackingTick((t) => t + 1);
       await Promise.all([generateGraphs(), loadZones()]);
     } catch (err) {
       notify(err.message, "error");
@@ -249,13 +276,25 @@ export default function DashboardPage() {
     <div className="min-h-screen text-slate-900 dark:text-slate-100 p-4 md:p-8">
       <Toast message={toast.message} type={toast.type} />
       <PanicFab onStatus={notify} />
-      <ChatPanel />
+      <Chatbot
+        onAutoFill={(ctx) => {
+          if (ctx.crime_type) setForm((p) => ({ ...p, crimeType: ctx.crime_type }));
+          if (ctx.location) setRegion(ctx.location);
+          if (ctx.time) {
+            const v = String(ctx.time).toLowerCase();
+            if (v.includes("night")) setAmpm("PM");
+            else if (v.includes("morning")) setAmpm("AM");
+          }
+          if (ctx.people) setForm((p) => ({ ...p, actorType: ctx.people }));
+        }}
+        onUrgent={() => notify("?? This seems urgent. Please use Panic button if immediate danger.", "error")}
+      />
       <div className="max-w-[1700px] mx-auto space-y-4">
         <header className="glass p-4 flex flex-wrap gap-3 justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">AI Crime Intelligence Platform</h1>
             <p className="text-slate-600 dark:text-slate-300 text-sm">
-              Welcome {user?.username || "Officer"} ù State: {defaultState}{" "}
+              Welcome {user?.username || "Officer"} ? State: {defaultState}{" "}
               <span className="ml-2 px-2 py-0.5 rounded-full bg-sky-500/20 text-xs capitalize">{role}</span>
             </p>
           </div>
@@ -295,21 +334,7 @@ export default function DashboardPage() {
               <CrimeMapLeaflet selectedState={selectedState} blinkKey={mapBlinkId} refreshKey={mapReload} />
             </div>
             <PredictionPanel selectedState={selectedState} region={region} time={time} ampm={ampm} form={form} />
-            <ReportTracking role={role} onNotify={notify} />
-            <select className={fieldBase} value={region} onChange={(e) => setRegion(e.target.value)}>
-              {regions.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-            <div className="grid grid-cols-2 gap-2">
-              <input type="time" className={fieldBase} value={time} onChange={(e) => setTime(e.target.value)} />
-              <select className={fieldBase} value={ampm} onChange={(e) => setAmpm(e.target.value)}>
-                <option>AM</option>
-                <option>PM</option>
-              </select>
-            </div>
+            <ReportTracking role={role} onNotify={notify} refreshTrigger={trackingTick} />
             <button type="button" onClick={applyGps} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-sm">
               <MapPinned size={16} /> GPS: auto state / region
             </button>
@@ -361,6 +386,19 @@ export default function DashboardPage() {
                     </select>
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <div className="text-xs text-slate-600 dark:text-slate-300">Incident time</div>
+                    <input type="time" className={fieldBase} value={time} onChange={(e) => setTime(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-slate-600 dark:text-slate-300">AM / PM</div>
+                    <select className={fieldBase} value={ampm} onChange={(e) => setAmpm(e.target.value)}>
+                      <option>AM</option>
+                      <option>PM</option>
+                    </select>
+                  </div>
+                </div>
                 <textarea
                   className={`${fieldBase} min-h-24`}
                   placeholder="Describe incident"
@@ -370,25 +408,50 @@ export default function DashboardPage() {
                 <div className="flex flex-wrap gap-2">
                   <label className="p-2 bg-slate-200 dark:bg-slate-800 rounded-lg flex items-center gap-2 cursor-pointer flex-1 min-w-[140px]">
                     <UploadCloud size={16} /> Upload proof
-                    <input key={proofFileInputKey} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0] || null)} />
+                    <input
+                      key={proofFileInputKey}
+                      type="file"
+                      accept="image/*,video/*,audio/*"
+                      className="hidden"
+                      onChange={(e) => onFile(e.target.files?.[0] || null)}
+                    />
                   </label>
                   <VoiceFill
-                    defaultState={selectedState}
-                    onStructured={(d) => {
-                      if (d.error) notify(d.error, "error");
-                      if (d.crime_type) setForm((p) => ({ ...p, crimeType: d.crime_type }));
-                      if (d.actor_type) setForm((p) => ({ ...p, actorType: d.actor_type }));
-                      if (d.weapon === "Yes" || d.weapon === "No") setForm((p) => ({ ...p, weaponUsed: d.weapon }));
-                      if (d.vehicle === "Yes" || d.vehicle === "No") setForm((p) => ({ ...p, vehicleUsed: d.vehicle }));
-                      if (d.state) setSelectedState(d.state);
-                      if (d.region) setRegion(d.region);
-                      if (d.raw) notify("Voice captured", "success");
+                    onVoiceRecorded={(blob) => {
+                      setVoiceBlob(blob);
+                      setVoicePreviewUrl((prev) => {
+                        if (prev) URL.revokeObjectURL(prev);
+                        return URL.createObjectURL(blob);
+                      });
+                      notify("Voice note recorded ? it uploads when you submit.", "success");
                     }}
+                    onError={(msg) => notify(msg, "error")}
                   />
                 </div>
+                {voicePreviewUrl ? (
+                  <div className="space-y-1">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">Voice note (uploads with Submit)</div>
+                    <audio src={voicePreviewUrl} controls className="w-full rounded-lg border border-slate-300 dark:border-white/10" />
+                    <button
+                      type="button"
+                      className="text-xs text-rose-600 dark:text-rose-300 hover:underline"
+                      onClick={() => {
+                        setVoiceBlob(null);
+                        setVoicePreviewUrl((prev) => {
+                          if (prev) URL.revokeObjectURL(prev);
+                          return "";
+                        });
+                      }}
+                    >
+                      Remove voice note
+                    </button>
+                  </div>
+                ) : null}
                 {previewUrl &&
                   (file?.type.startsWith("video") ? (
                     <video src={previewUrl} controls className="w-full rounded-lg border border-slate-300 dark:border-white/10" />
+                  ) : file?.type.startsWith("audio") ? (
+                    <audio src={previewUrl} controls className="w-full rounded-lg border border-slate-300 dark:border-white/10" />
                   ) : (
                     <img src={previewUrl} alt="preview" className="w-full rounded-lg border border-slate-300 dark:border-white/10" />
                   ))}
@@ -399,11 +462,27 @@ export default function DashboardPage() {
                   onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
                 />
                 <button
+                  type="button"
                   onClick={submitReport}
                   className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 hover:scale-[1.01] transition font-semibold text-white"
                 >
                   Submit Proof
                 </button>
+                {lastSubmitInfo ? (
+                  <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 dark:bg-emerald-500/5 p-3 text-xs space-y-1 text-slate-700 dark:text-slate-200">
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400">Submitted at: </span>
+                      {new Date(lastSubmitInfo.submittedAt).toLocaleString()}
+                    </div>
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400">Incident time: </span>
+                      {lastSubmitInfo.incidentTime}
+                    </div>
+                    <div className="font-mono text-[11px] pt-1 border-t border-emerald-400/20">
+                      Report ID: {lastSubmitInfo.id}
+                    </div>
+                  </div>
+                ) : null}
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass p-4 md:col-span-2">
@@ -524,7 +603,7 @@ export default function DashboardPage() {
                     <div className="font-semibold">{z.zone}</div>
                     <div className="text-xs opacity-90">{z.state}</div>
                     <div className="text-xs mt-1">
-                      Risk: {z.risk} ù Cases: {z.crime_frequency}
+                      Risk: {z.risk} ? Cases: {z.crime_frequency}
                     </div>
                   </div>
                 ))}
@@ -564,7 +643,7 @@ export default function DashboardPage() {
         </div>
 
         <footer className="glass p-4 flex flex-col items-center gap-2 text-sm">
-          <div className="text-red-600 dark:text-red-300 font-semibold">Emergency: 100 ù Disaster: 108</div>
+          <div className="text-red-600 dark:text-red-300 font-semibold">Emergency: 100 ? Disaster: 108</div>
         </footer>
       </div>
     </div>

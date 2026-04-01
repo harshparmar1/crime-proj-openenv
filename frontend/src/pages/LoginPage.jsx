@@ -21,7 +21,11 @@ export default function LoginPage() {
       const res = await apiPost("/auth/login", { email, password });
       localStorage.setItem("crime_user", JSON.stringify(res.user));
       localStorage.setItem("crime_token", res.token);
-      navigate("/");
+      if (res?.user?.role === "police") {
+        navigate("/police");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       setError(err.message);
     } finally {

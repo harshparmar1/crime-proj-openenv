@@ -76,6 +76,11 @@ class Report(Base):
     file_content_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
     file_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
 
+    voice_file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    voice_content_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    voice_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    voice_transcript: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
 

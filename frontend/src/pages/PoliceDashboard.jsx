@@ -14,7 +14,8 @@ import {
   FaSpinner
 } from "react-icons/fa";
 import { Toast } from "../components/Toast";
-import { apiGet, apiPatch } from "../lib/api";
+import { PanicReportsPanel } from "../components/intelligence/PanicReportsPanel";
+import { API_BASE, apiGet, apiPatch, authHeaders } from "../lib/api";
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: FaShieldAlt },
@@ -59,9 +60,108 @@ function Spinner({ label = "Loading…" }) {
 }
 
 function EvidenceModal({ open, onClose, report }) {
+  const [mediaUrl, setMediaUrl] = useState(null);
+  const [mediaError, setMediaError] = useState(null);
+  const [voiceUrl, setVoiceUrl] = useState(null);
+  const [voiceError, setVoiceError] = useState(null);
+
+  const reportId = report?.public_id || report?.id;
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl = null;
+
+    if (!open || !report) {
+      setMediaUrl(null);
+      setMediaError(null);
+      return () => {};
+    }
+
+    setMediaError(null);
+
+    (async () => {
+      if (report.evidence_url) {
+        if (!cancelled) setMediaUrl(report.evidence_url);
+        return;
+      }
+      if (report.has_file && reportId) {
+        try {
+          const res = await fetch(`${API_BASE}/reports/${encodeURIComponent(reportId)}/file`, {
+            headers: { ...authHeaders() }
+          });
+          if (!res.ok) throw new Error("Could not load evidence");
+          if (cancelled) return;
+          const blob = await res.blob();
+          if (cancelled) return;
+          objectUrl = URL.createObjectURL(blob);
+          if (!cancelled) setMediaUrl(objectUrl);
+        } catch {
+          if (!cancelled) {
+            setMediaUrl(null);
+            setMediaError("Could not load proof file from server.");
+          }
+        }
+        return;
+      }
+      if (!cancelled) setMediaUrl(null);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [open, report, reportId, report?.has_file, report?.evidence_url]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl = null;
+
+    if (!open || !report) {
+      setVoiceUrl(null);
+      setVoiceError(null);
+      return () => {};
+    }
+
+    setVoiceError(null);
+
+    (async () => {
+      if (!report.has_voice || !reportId) {
+        if (!cancelled) setVoiceUrl(null);
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/reports/${encodeURIComponent(reportId)}/voice`, {
+          headers: { ...authHeaders() }
+        });
+        if (!res.ok) throw new Error("voice");
+        if (cancelled) return;
+        const blob = await res.blob();
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        if (!cancelled) setVoiceUrl(objectUrl);
+      } catch {
+        if (!cancelled) {
+          setVoiceUrl(null);
+          setVoiceError("Could not load voice recording.");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [open, report, reportId, report?.has_voice]);
+
   if (!open || !report) return null;
-  const isVideo = report.file_content_type?.startsWith("video");
-  const isImage = report.file_content_type?.startsWith("image");
+
+  const effectiveType = report.file_content_type || "";
+  const isVideo = effectiveType.startsWith("video") || (mediaUrl && report.file_name && /\.(webm|mp4|mov)$/i.test(report.file_name));
+  const isImage =
+    effectiveType.startsWith("image") || (mediaUrl && report.file_name && /\.(jpe?g|png|gif|webp|bmp)$/i.test(report.file_name));
+  const isAudioFile =
+    effectiveType.startsWith("audio") || /\.(mp3|wav|webm|ogg|m4a)$/i.test(report.file_name || "");
+  const showMedia = Boolean(mediaUrl);
 
   return (
     <AnimatePresence>
@@ -78,13 +178,15 @@ function EvidenceModal({ open, onClose, report }) {
           initial={{ opacity: 0, y: 12, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.98 }}
-          className="w-full max-w-3xl rounded-2xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 shadow-2xl"
+          className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 shadow-2xl"
         >
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
             <div className="space-y-0.5">
-              <div className="text-lg font-semibold text-white">Evidence Viewer</div>
+              <div className="text-lg font-semibold text-white">Report &amp; evidence</div>
               <div className="text-xs text-slate-300">
-                Report <span className="font-mono">{report.public_id || report.id}</span> · {report.crime_type}
+                ID <span className="font-mono">{reportId}</span> · {report.crime_type}
+                {report.file_name ? <span className="text-slate-400"> · {report.file_name}</span> : null}
+                {report.voice_file_name ? <span className="text-slate-400"> · Voice: {report.voice_file_name}</span> : null}
               </div>
             </div>
             <button
@@ -98,21 +200,55 @@ function EvidenceModal({ open, onClose, report }) {
           </div>
 
           <div className="p-5 grid md:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-white/10 bg-black/20 overflow-hidden min-h-[220px] flex items-center justify-center">
-              {report.evidence_url ? (
-                isVideo ? (
-                  <video src={report.evidence_url} controls className="w-full h-full object-contain" />
-                ) : isImage ? (
-                  <img src={report.evidence_url} alt="Evidence" className="w-full h-full object-contain" />
+            <div className="flex flex-col gap-4 min-w-0">
+              <div className="rounded-xl border border-white/10 bg-black/20 overflow-hidden min-h-[180px] flex items-center justify-center">
+                {mediaError ? (
+                  <div className="text-sm text-rose-300 p-4">{mediaError}</div>
+                ) : showMedia ? (
+                  isVideo ? (
+                    <video src={mediaUrl} controls className="w-full max-h-[280px] object-contain" />
+                  ) : isImage ? (
+                    <img src={mediaUrl} alt="Evidence" className="w-full max-h-[280px] object-contain" />
+                  ) : isAudioFile ? (
+                    <audio src={mediaUrl} controls className="w-full px-2" />
+                  ) : (
+                    <a
+                      href={mediaUrl}
+                      download={report.file_name || "evidence"}
+                      className="text-sm text-sky-300 underline p-4"
+                    >
+                      Download attached file
+                    </a>
+                  )
+                ) : report.has_file ? (
+                  <div className="text-sm text-slate-400 p-4">Loading proof…</div>
                 ) : (
-                  <div className="text-sm text-slate-300 p-4">Evidence file attached (unsupported preview type).</div>
-                )
-              ) : (
-                <div className="text-sm text-slate-300 p-4">No evidence URL available yet.</div>
+                  <div className="text-sm text-slate-300 p-4">No photo/video proof uploaded.</div>
+                )}
+              </div>
+
+              {(report.has_voice || voiceUrl || voiceError) && (
+                <div className="rounded-xl border border-emerald-400/25 bg-emerald-950/30 p-4 space-y-2">
+                  <div className="text-xs font-medium text-emerald-200">Voice evidence</div>
+                  {voiceError ? (
+                    <div className="text-sm text-rose-300">{voiceError}</div>
+                  ) : voiceUrl ? (
+                    <audio src={voiceUrl} controls className="w-full" />
+                  ) : report.has_voice ? (
+                    <div className="text-sm text-slate-400">Loading voice…</div>
+                  ) : null}
+                  {report.voice_file_name ? (
+                    <div className="text-[11px] text-slate-400">{report.voice_file_name}</div>
+                  ) : null}
+                </div>
               )}
             </div>
 
             <div className="space-y-3">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <div className="text-xs text-slate-400">Reporter email</div>
+                <div className="text-sm text-white break-all">{report.user_email || "— (submitted without login)"}</div>
+              </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <div className="text-xs text-slate-400">Phone</div>
                 <div className="text-sm text-white">{report.phone || "—"}</div>
@@ -123,14 +259,56 @@ function EvidenceModal({ open, onClose, report }) {
                   {report.region}, {report.state}
                 </div>
               </div>
+              {report.latitude != null && report.longitude != null ? (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-xs text-slate-400">GPS</div>
+                  <div className="text-sm text-white font-mono">
+                    {Number(report.latitude).toFixed(5)}, {Number(report.longitude).toFixed(5)}
+                  </div>
+                </div>
+              ) : null}
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <div className="text-xs text-slate-400">Description</div>
                 <div className="text-sm text-white whitespace-pre-wrap">{report.description || "—"}</div>
               </div>
+              {report.voice_transcript ? (
+                <div className="rounded-xl border border-violet-400/25 bg-violet-950/20 p-4">
+                  <div className="text-xs text-violet-300">Voice transcript (speech-to-text)</div>
+                  <div className="text-sm text-white whitespace-pre-wrap mt-1">{report.voice_transcript}</div>
+                </div>
+              ) : null}
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs text-slate-400">Meta</div>
-                <div className="text-sm text-white">
-                  {report.time} · {report.actor_type} · Weapon: {report.weapon} · Vehicle: {report.vehicle}
+                <div className="text-xs text-slate-400">Details</div>
+                <div className="text-sm text-white space-y-1">
+                  <div>
+                    <span className="text-slate-400">Time: </span>
+                    {report.time}
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Actor: </span>
+                    {report.actor_type}
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Weapon: </span>
+                    {report.weapon}
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Vehicle (Y/N): </span>
+                    {report.vehicle}
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Vehicle type: </span>
+                    {report.vehicle_selection || "—"}
+                  </div>
+                  {report.is_panic ? (
+                    <div className="text-rose-300 font-medium">Panic / emergency flag</div>
+                  ) : null}
+                  {report.created_at ? (
+                    <div>
+                      <span className="text-slate-400">Submitted: </span>
+                      {new Date(report.created_at).toLocaleString()}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -196,8 +374,16 @@ export default function PoliceDashboard() {
           const msg = JSON.parse(ev.data);
           if (msg?.type === "alert" || msg?.type === "crime_report" || msg?.type === "panic") {
             const location = msg.region || msg.location || "Unknown";
-            const crime_type = msg.crime_type || (msg.type === "panic" ? "PANIC" : "Alert");
-            const next = { id: msg.public_id || `ws_${Date.now()}`, crime_type, location, time: nowClock(), ts: Date.now() };
+            const isPanic = msg.type === "panic";
+            const crime_type = msg.crime_type || (isPanic ? "PANIC" : "Alert");
+            const next = {
+              id: msg.public_id || `ws_${Date.now()}`,
+              crime_type,
+              location,
+              time: nowClock(),
+              ts: Date.now(),
+              is_panic: isPanic
+            };
             setAlerts((a) => [next, ...a].slice(0, 6));
             notify(`LIVE: ${crime_type} · ${location}`, "error");
           }
@@ -228,6 +414,8 @@ export default function PoliceDashboard() {
         region: "Mumbai",
         time: "08:30 PM",
         status: "Pending",
+        has_file: false,
+        has_voice: false,
         evidence_url: "/sample.jpg",
         file_content_type: "image/jpeg",
         phone: "9876543210",
@@ -244,6 +432,8 @@ export default function PoliceDashboard() {
         region: "Pune",
         time: "07:10 PM",
         status: "Investigating",
+        has_file: false,
+        has_voice: false,
         evidence_url: "",
         file_content_type: "",
         phone: "9123456789",
@@ -260,6 +450,8 @@ export default function PoliceDashboard() {
         region: "Bangalore",
         time: "11:55 AM",
         status: "Resolved",
+        has_file: false,
+        has_voice: false,
         evidence_url: "",
         file_content_type: "",
         phone: "9000000000",
@@ -267,6 +459,25 @@ export default function PoliceDashboard() {
         actor_type: "Individual",
         weapon: "No",
         vehicle: "No"
+      },
+      {
+        id: 4,
+        public_id: "RPT-LOCAL-0004",
+        crime_type: "Emergency",
+        state: "Maharashtra",
+        region: "Navi Mumbai",
+        time: "09:02 PM",
+        status: "Investigating",
+        has_file: false,
+        has_voice: false,
+        evidence_url: "",
+        file_content_type: "",
+        phone: "",
+        description: "PANIC BUTTON — automated distress signal",
+        actor_type: "Individual",
+        weapon: "Unknown",
+        vehicle: "Unknown",
+        is_panic: true
       }
     ],
     []
@@ -304,7 +515,7 @@ export default function PoliceDashboard() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return reports
+    const list = reports
       .filter((r) => (statusFilter === "All" ? true : r.status === statusFilter))
       .filter((r) => {
         if (!q) return true;
@@ -312,9 +523,16 @@ export default function PoliceDashboard() {
           String(r.public_id || r.id).toLowerCase().includes(q) ||
           String(r.crime_type || "").toLowerCase().includes(q) ||
           String(r.region || "").toLowerCase().includes(q) ||
-          String(r.state || "").toLowerCase().includes(q)
+          String(r.state || "").toLowerCase().includes(q) ||
+          String(r.user_email || "").toLowerCase().includes(q)
         );
       });
+    return list.sort((a, b) => {
+      if (Boolean(a.is_panic) !== Boolean(b.is_panic)) return a.is_panic ? -1 : 1;
+      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return bTime - aTime;
+    });
   }, [reports, search, statusFilter]);
 
   const updateLocalStatus = (id, nextStatus) => {
@@ -334,12 +552,10 @@ export default function PoliceDashboard() {
     // API-ready: PUT /reports/{id}/status (we have PATCH /reports/{id}/status in backend for now).
     // If backend route isn't available, UI still works locally.
     const apiStatus = uiToApiStatus[nextStatus] || "pending";
-    if (apiStatus !== "rejected") {
-      try {
-        await apiPatch(`/reports/${id}/status`, { status: apiStatus });
-      } catch {
-        notify("Server not updated (API not available yet).", "error");
-      }
+    try {
+      await apiPatch(`/reports/${id}/status`, { status: apiStatus });
+    } catch {
+      notify("Could not sync status with server.", "error");
     }
   };
 
@@ -490,7 +706,11 @@ export default function PoliceDashboard() {
                       key={a.id}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="rounded-2xl border border-rose-400/25 bg-gradient-to-br from-rose-600/15 to-orange-500/10 p-4 shadow-lg"
+                      className={`rounded-2xl border p-4 shadow-lg ${
+                        a.is_panic
+                          ? "border-rose-400/60 bg-gradient-to-br from-rose-600/35 to-rose-500/20 animate-pulse"
+                          : "border-rose-400/25 bg-gradient-to-br from-rose-600/15 to-orange-500/10"
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -500,8 +720,8 @@ export default function PoliceDashboard() {
                         <span className="text-[11px] text-slate-300">{a.time}</span>
                       </div>
                       <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-300">
-                        <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
-                        Incoming · priority high
+                        <span className={`h-2 w-2 rounded-full ${a.is_panic ? "bg-rose-300" : "bg-rose-400"} animate-pulse`} />
+                        {a.is_panic ? "PANIC · priority critical" : "Incoming · priority high"}
                       </div>
                     </motion.div>
                   ))}
@@ -524,6 +744,8 @@ export default function PoliceDashboard() {
                 </div>
               </section>
             </div>
+
+            <PanicReportsPanel reports={reports} onViewEvidence={openEvidence} onUpdateStatus={updateStatus} />
 
             {/* Reports management */}
             <section className="rounded-2xl border border-white/10 bg-white/5 shadow-xl overflow-hidden">
@@ -565,8 +787,11 @@ export default function PoliceDashboard() {
                         <tr>
                           <th className="text-left px-4 py-3 font-medium">Report ID</th>
                           <th className="text-left px-4 py-3 font-medium">Crime Type</th>
+                          <th className="text-left px-4 py-3 font-medium">Priority</th>
                           <th className="text-left px-4 py-3 font-medium">Location</th>
+                          <th className="text-left px-4 py-3 font-medium">Reporter</th>
                           <th className="text-left px-4 py-3 font-medium">Time</th>
+                          <th className="text-left px-4 py-3 font-medium">Proof</th>
                           <th className="text-left px-4 py-3 font-medium">Status</th>
                           <th className="text-left px-4 py-3 font-medium">Actions</th>
                         </tr>
@@ -579,11 +804,27 @@ export default function PoliceDashboard() {
                             <tr key={id} className="hover:bg-white/5 transition">
                               <td className="px-4 py-3 font-mono text-xs text-slate-200">{id}</td>
                               <td className="px-4 py-3 text-slate-100">{r.crime_type}</td>
+                              <td className="px-4 py-3">
+                                {r.is_panic ? (
+                                  <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-rose-400/50 bg-rose-500/20 text-rose-200 text-[11px] font-semibold">
+                                    <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
+                                    PANIC
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-slate-400">Normal</span>
+                                )}
+                              </td>
                               <td className="px-4 py-3 text-slate-200">
                                 {r.region}
                                 {r.state ? <span className="text-slate-400">, {r.state}</span> : null}
                               </td>
+                              <td className="px-4 py-3 text-slate-300 text-xs max-w-[140px] truncate" title={r.user_email || ""}>
+                                {r.user_email || "—"}
+                              </td>
                               <td className="px-4 py-3 text-slate-200">{r.time}</td>
+                              <td className="px-4 py-3 text-slate-200 text-xs">
+                                {[r.has_file && "Media", r.has_voice && "Voice"].filter(Boolean).join(" + ") || "—"}
+                              </td>
                               <td className="px-4 py-3">
                                 <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${meta.badge}`}>
                                   <span className={`h-2 w-2 rounded-full ${meta.dot}`} />

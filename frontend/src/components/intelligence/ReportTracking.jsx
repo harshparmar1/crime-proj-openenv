@@ -8,7 +8,7 @@ const statusColors = {
   resolved: "bg-emerald-500/20 text-emerald-200"
 };
 
-export function ReportTracking({ role, onNotify }) {
+export function ReportTracking({ role, onNotify, refreshTrigger = 0 }) {
   const [rows, setRows] = useState([]);
 
   const load = async () => {
@@ -22,7 +22,7 @@ export function ReportTracking({ role, onNotify }) {
 
   useEffect(() => {
     if (localStorage.getItem("crime_token")) load();
-  }, []);
+  }, [refreshTrigger]);
 
   const updateStatus = async (id, status) => {
     try {
@@ -49,8 +49,13 @@ export function ReportTracking({ role, onNotify }) {
               <span className="font-mono truncate">{r.report_id}</span>
               <span className={`px-2 py-0.5 rounded ${statusColors[r.status] || ""}`}>{r.status}</span>
             </div>
-            <div>
-              {r.crime_type} · {r.region}
+            <div className="text-slate-300/90">
+              {r.crime_type}
+              {r.created_at ? (
+                <span className="block text-[10px] text-slate-400 mt-0.5">
+                  Submitted {new Date(r.created_at).toLocaleString()}
+                </span>
+              ) : null}
             </div>
             {(role === "police" || role === "admin") && (
               <div className="flex flex-wrap gap-1 pt-1">

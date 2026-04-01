@@ -12,6 +12,12 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function RoleHome() {
+  const user = JSON.parse(localStorage.getItem("crime_user") || "null");
+  if (user?.role === "police") return <Navigate to="/police" replace />;
+  return <DashboardPage />;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -19,7 +25,7 @@ export default function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify-otp" element={<OtpPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/" element={<ProtectedRoute><RoleHome /></ProtectedRoute>} />
       <Route path="/police" element={<ProtectedRoute><PoliceDashboard /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

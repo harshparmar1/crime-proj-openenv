@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Literal, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -33,6 +34,8 @@ async def create_report(
     phone: str = Form(...),
     vehicle_selection: str = Form(...),
     file: Optional[UploadFile] = File(None),
+    voice: Optional[UploadFile] = File(None),
+    voice_transcript: Optional[str] = Form(None),
     latitude: Optional[float] = Form(None),
     longitude: Optional[float] = Form(None),
 ):
@@ -48,6 +51,17 @@ async def create_report(
         file_name = file.filename
         file_content_type = file.content_type
         file_bytes = await file.read()
+
+    voice_name = None
+    voice_ct = None
+    voice_bytes = None
+    if voice and voice.filename:
+        voice_name = voice.filename
+        voice_ct = voice.content_type
+        voice_bytes = await voice.read()
+
+    vt_clean = (voice_transcript or "").strip()
+    voice_transcript_val = vt_clean if vt_clean else None
 
     public_id = str(uuid.uuid4())
     lat, lng = latitude, longitude
@@ -74,6 +88,10 @@ async def create_report(
         file_name=file_name,
         file_content_type=file_content_type,
         file_bytes=file_bytes,
+        voice_file_name=voice_name,
+        voice_content_type=voice_ct,
+        voice_bytes=voice_bytes,
+        voice_transcript=voice_transcript_val,
         created_at=datetime.now(timezone.utc),
     )
     db.add(row)
@@ -102,7 +120,96 @@ async def create_report(
             report_public_id=public_id,
         )
 
-    return {"status": "success", "message": "Submitted successfully", "report_id": public_id}
+    return {
+        "status": "success",
+        "message": "Submitted successfully",
+        "report_id": public_id,
+        "submitted_at": row.created_at.isoformat(),
+        "incident_time": time,
+    }
+
+
+def _report_public_dict(r: Report) -> dict:
+    has_file = bool(r.file_bytes and len(r.file_bytes) > 0)
+    has_voice = bool(r.voice_bytes and len(r.voice_bytes) > 0)
+    return {
+        "public_id": r.public_id,
+        "state": r.state,
+        "region": r.region,
+        "time": r.time,
+        "crime_type": r.crime_type,
+        "actor_type": r.actor_type,
+        "weapon": r.weapon,
+        "vehicle": r.vehicle,
+        "vehicle_selection": r.vehicle_selection,
+        "description": r.description,
+        "phone": r.phone,
+        "status": r.status,
+        "latitude": r.latitude,
+        "longitude": r.longitude,
+        "user_email": r.user_email,
+        "is_panic": r.is_panic,
+        "file_name": r.file_name,
+        "file_content_type": r.file_content_type,
+        "has_file": has_file,
+        "voice_file_name": r.voice_file_name,
+        "voice_content_type": r.voice_content_type,
+        "has_voice": has_voice,
+        "voice_transcript": r.voice_transcript,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    }
+
+
+@router.get("/reports")
+def list_all_reports(
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """Police and admin: full list of submitted reports (no binary bodies)."""
+    if user.role not in ("police", "admin"):
+        raise HTTPException(status_code=403, detail="Only police or admin can list all reports")
+    rows = db.query(Report).order_by(Report.created_at.desc()).limit(500).all()
+    return [_report_public_dict(r) for r in rows]
+
+
+@router.get("/reports/{public_id}/voice")
+def get_report_voice_file(
+    public_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    if user.role not in ("police", "admin"):
+        raise HTTPException(status_code=403, detail="Only police or admin can download voice evidence")
+    r = db.query(Report).filter(Report.public_id == public_id).first()
+    if not r or not r.voice_bytes:
+        raise HTTPException(status_code=404, detail="No voice recording for this report")
+    media = r.voice_content_type or "audio/webm"
+    fname = r.voice_file_name or "voice-evidence"
+    return Response(
+        content=r.voice_bytes,
+        media_type=media,
+        headers={"Content-Disposition": f'inline; filename="{fname}"'},
+    )
+
+
+@router.get("/reports/{public_id}/file")
+def get_report_evidence_file(
+    public_id: str,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    if user.role not in ("police", "admin"):
+        raise HTTPException(status_code=403, detail="Only police or admin can download evidence")
+    r = db.query(Report).filter(Report.public_id == public_id).first()
+    if not r or not r.file_bytes:
+        raise HTTPException(status_code=404, detail="No file for this report")
+    media = r.file_content_type or "application/octet-stream"
+    fname = r.file_name or "evidence"
+    return Response(
+        content=r.file_bytes,
+        media_type=media,
+        headers={"Content-Disposition": f'inline; filename="{fname}"'},
+    )
 
 
 @router.get("/reports/tracking")
@@ -125,7 +232,7 @@ def list_my_reports(
 
 
 class StatusBody(BaseModel):
-    status: Literal["pending", "investigating", "resolved"]
+    status: Literal["pending", "investigating", "resolved", "rejected"]
 
 
 @router.patch("/reports/{public_id}/status")
