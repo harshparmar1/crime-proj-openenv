@@ -1,6 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
 import { FaBan, FaCheck } from "react-icons/fa";
-import { API_BASE, authHeaders } from "../../lib/api";
 
 const statusMeta = {
   Pending: { badge: "bg-amber-500/20 text-amber-200 border-amber-400/30", dot: "bg-amber-400" },
@@ -10,51 +8,7 @@ const statusMeta = {
 };
 
 export function PanicReportsPanel({ reports, onViewEvidence, onUpdateStatus }) {
-  const panicReports = useMemo(() => (reports || []).filter((r) => r.is_panic), [reports]);
-  const [photoUrls, setPhotoUrls] = useState({});
-
-  useEffect(() => {
-    let cancelled = false;
-    const objectUrls = [];
-
-    (async () => {
-      const rows = await Promise.all(
-        panicReports.map(async (r) => {
-          const id = r.public_id || r.id;
-          if (!id || !r.has_file) return [id, null];
-          try {
-            const res = await fetch(`${API_BASE}/reports/${encodeURIComponent(id)}/file`, {
-              headers: { ...authHeaders() },
-            });
-            if (!res.ok) return [id, null];
-            const blob = await res.blob();
-            if (!blob.type.startsWith("image")) return [id, null];
-            const url = URL.createObjectURL(blob);
-            objectUrls.push(url);
-            return [id, url];
-          } catch {
-            return [id, null];
-          }
-        })
-      );
-
-      if (cancelled) {
-        objectUrls.forEach((u) => URL.revokeObjectURL(u));
-        return;
-      }
-
-      const next = {};
-      rows.forEach(([id, url]) => {
-        if (id && url) next[id] = url;
-      });
-      setPhotoUrls(next);
-    })();
-
-    return () => {
-      cancelled = true;
-      objectUrls.forEach((u) => URL.revokeObjectURL(u));
-    };
-  }, [panicReports]);
+  const panicReports = (reports || []).filter((r) => r.is_panic);
 
   return (
     <section className="rounded-2xl border border-rose-400/30 bg-rose-500/5 shadow-xl overflow-hidden">
@@ -79,7 +33,6 @@ export function PanicReportsPanel({ reports, onViewEvidence, onUpdateStatus }) {
                   <th className="text-left px-4 py-3 font-medium">Report ID</th>
                   <th className="text-left px-4 py-3 font-medium">Location</th>
                   <th className="text-left px-4 py-3 font-medium">Time</th>
-                  <th className="text-left px-4 py-3 font-medium">Photo</th>
                   <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-left px-4 py-3 font-medium">Actions</th>
                 </tr>
@@ -96,24 +49,6 @@ export function PanicReportsPanel({ reports, onViewEvidence, onUpdateStatus }) {
                         {r.state ? <span className="text-rose-200/70">, {r.state}</span> : null}
                       </td>
                       <td className="px-4 py-3 text-rose-100">{r.time}</td>
-                      <td className="px-4 py-3">
-                        {photoUrls[id] ? (
-                          <button
-                            type="button"
-                            onClick={() => onViewEvidence?.(r)}
-                            className="rounded-lg border border-rose-300/30 overflow-hidden hover:opacity-90 transition"
-                            title="Open emergency photo"
-                          >
-                            <img
-                              src={photoUrls[id]}
-                              alt="Emergency snapshot"
-                              className="w-20 h-14 object-cover"
-                            />
-                          </button>
-                        ) : (
-                          <span className="text-xs text-rose-200/70">No photo</span>
-                        )}
-                      </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${meta.badge}`}>
                           <span className={`h-2 w-2 rounded-full ${meta.dot}`} />

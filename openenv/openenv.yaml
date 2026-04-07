@@ -1,0 +1,188 @@
+# openenv.yaml
+# Machine-readable specification for CrimeTriageOpenEnv
+# Compatible with the OpenEnv standard contract format.
+
+name: CrimeTriageOpenEnv
+version: "1.1.0"
+description: >
+  A real-world crime-incident triage environment where an AI agent processes
+  incoming crime reports for Indian metropolitan regions and must make three
+  simultaneous dispatch decisions: classify the crime type, assign a geographic
+  risk zone, and decide whether to escalate the case to senior officers.
+  Grounded in real Indian metro crime-pattern statistics (10 cities).
+
+domain: public_safety
+real_world: true
+language: en
+
+# ── Observation Space ─────────────────────────────────────────────────────────
+observation_space:
+  type: object
+  description: "Snapshot of the current crime incident context"
+  fields:
+    - name: current_reports
+      type: "list[dict]"
+      description: "One or more active crime report records for the selected region"
+      example: '[{"region": "Mumbai", "crime_type": "Theft", "zone": "Medium", "time_of_day": "AM", "needs_escalation": false}]'
+
+    - name: selected_region
+      type: string
+      description: "The geographic region under evaluation"
+      example: "Mumbai"
+
+    - name: crime_stats
+      type: "dict[string, int]"
+      description: "Frequency count of each crime type across all current dataset rows"
+      example: '{"Theft": 12, "Robbery": 5, "Assault": 3}'
+
+    - name: time_of_day
+      type: string
+      enum: [AM, PM, Night]
+      description: "Broad time bucket for the incident"
+
+# ── Action Space ──────────────────────────────────────────────────────────────
+action_space:
+  type: object
+  description: "Three-part triage decision the agent must make each step"
+  fields:
+    - name: classify_crime
+      type: string
+      enum: [Theft, Robbery, Assault, Cybercrime, Fraud]
+      description: "Agent's predicted crime type"
+
+    - name: assign_zone
+      type: string
+      enum: [Low, Medium, High]
+      description: "Agent's risk zone assignment for the region"
+
+    - name: escalate_case
+      type: boolean
+      description: "Whether to escalate the case to senior/specialist officers"
+
+    - name: ignore_case
+      type: boolean
+      description: "Whether to skip this case (always penalized — discourages lazy policy)"
+
+# ── Reward Function ───────────────────────────────────────────────────────────
+reward:
+  type: float
+  min: 0.0
+  max: 1.0
+  normalized: true
+  description: "Scalar reward per step, always in [0.0, 1.0]"
+  formula: "clamp(accuracy_score + progress_score + penalty, 0.0, 1.0)"
+  partial_credit: true
+  components:
+    - name: accuracy_score
+      range: "[0.0, 1.0]"
+      description: "Reward for correct classification and/or zone assignment"
+    - name: progress_score
+      range: "[0.0, 1.0]"
+      description: "Partial-progress bonus for partial correctness or correct escalation"
+    - name: penalty
+      range: "[-1.0, 0.0]"
+      description: "Deduction for wrong decisions or using ignore_case"
+
+# ── Tasks ─────────────────────────────────────────────────────────────────────
+tasks:
+  - id: task_easy
+    name: "Task 1 – Crime Classification"
+    difficulty: easy
+    grader: EasyGrader
+    description: >
+      Identify the correct crime type from the observation.
+      Exact match scores 1.0. Same crime category (e.g., both property crimes)
+      scores 0.4. Wrong category deducts 0.2. ignore_case deducts 0.3.
+    max_score: 1.0
+    partial_credit:
+      - condition: "Same crime category (property / violent / cyber)"
+        score: 0.4
+
+  - id: task_medium
+    name: "Task 2 – Zone Risk Assignment"
+    difficulty: medium
+    grader: MediumGrader
+    description: >
+      Assign the correct risk zone (Low / Medium / High).
+      Exact zone scores 1.0. Adjacent zone (±1 step) scores 0.5.
+      Fully wrong zone (±2 steps) deducts 0.3. ignore_case deducts 0.3.
+    max_score: 1.0
+    partial_credit:
+      - condition: "Adjacent zone (e.g., Medium when true is High)"
+        score: 0.5
+
+  - id: task_hard
+    name: "Task 3 – Full Triage Decision"
+    difficulty: hard
+    grader: HardGrader
+    description: >
+      Must correctly classify crime (35%), assign zone (35%), and decide
+      escalation (30%) simultaneously. Each sub-task awards partial credit.
+      ignore_case immediately returns penalty of -0.40 and skips grading.
+    max_score: 1.0
+    partial_credit:
+      - condition: "Crime: same category match"
+        score: 0.15
+      - condition: "Zone: adjacent zone"
+        score: 0.15
+
+# ── Episode Config ────────────────────────────────────────────────────────────
+episode:
+  default_max_steps: 30
+  task_rotation: round_robin     # easy → medium → hard → easy → …
+  anti_repetition: true
+  anti_repetition_penalty: 0.10  # deducted when same action repeated 4+ times
+
+# ── Dataset ───────────────────────────────────────────────────────────────────
+dataset:
+  seed_cities:
+    - Mumbai
+    - Pune
+    - Nagpur
+    - Bangalore
+    - Mysore
+    - Delhi
+    - Hyderabad
+    - Chennai
+    - Kolkata
+    - Ahmedabad
+  default_seed: 42
+  min_samples: 5
+  max_training_samples: 80
+  fields:
+    - region         # string: city / area
+    - crime_type     # string: one of the 5 crime labels
+    - zone           # string: Low | Medium | High
+    - time_of_day    # string: AM | PM | Night
+    - needs_escalation  # bool
+
+# ── HTTP API Endpoints ────────────────────────────────────────────────────────
+api:
+  prefix: /openenv
+  endpoints:
+    - method: POST
+      path: /reset
+      description: "Reset the environment and return the first observation"
+    - method: POST
+      path: /step
+      description: "Submit one action, receive (observation, reward, done, info)"
+    - method: GET
+      path: /state
+      description: "Return current episode statistics without advancing state"
+    - method: POST
+      path: /dataset
+      description: "Inject a custom dataset (list of dicts) and reset"
+
+# ── Baseline Agents ───────────────────────────────────────────────────────────
+baselines:
+  - name: heuristic_deterministic
+    script: baseline_heuristic.py
+    requires_api_key: false
+    seed: 42
+    description: "Rule-based agent. Always reproducible. Recommended for CI."
+
+  - name: llm_openai
+    script: baseline.py
+    requires_api_key: true
+    env_var: OPENAI_API_KEY
+    description: "OpenAI JSON-mode agent with live/record/replay modes. Use --mode record then --mode replay for deterministic, no-key reruns. Recommended model: gpt-4o-mini-2024-07-18."

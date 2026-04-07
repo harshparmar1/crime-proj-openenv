@@ -6,8 +6,8 @@ import {
   BarChart2, Crosshair, Radio
 } from "lucide-react";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Dot
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Cell, CartesianGrid
 } from "recharts";
 import { apiGet, apiPost, WS_BASE } from "../../lib/api";
 import { STATE_REGIONS } from "../../data/stateRegions";
@@ -196,7 +196,7 @@ function TimeAnalysisChart({ data }) {
 
       <div className="h-[110px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 4, right: 2, left: -20, bottom: 0 }}>
+          <BarChart data={chartData} margin={{ top: 4, right: 2, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="2 4" stroke="rgba(56,189,248,0.05)" vertical={false} />
             <XAxis
               dataKey="name"
@@ -221,28 +221,12 @@ function TimeAnalysisChart({ data }) {
               }}
               formatter={(v, _, { payload }) => [`${v} crimes`, `Hour ${payload?.hour}`]}
             />
-            <Line
-              type="monotone"
-              dataKey="count"
-              stroke="#38bdf8"
-              strokeWidth={2}
-              dot={(props) => {
-                const { cx, cy, payload } = props;
-                return (
-                  <circle
-                    key={`dot-${payload.hour}`}
-                    cx={cx}
-                    cy={cy}
-                    r={3}
-                    fill={getColor(payload.hour)}
-                    stroke="rgba(10,18,35,0.8)"
-                    strokeWidth={1}
-                  />
-                );
-              }}
-              activeDot={{ r: 5, stroke: "#38bdf8", strokeWidth: 2, fill: "#0a1223" }}
-            />
-          </LineChart>
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={24}>
+              {chartData.map((d, i) => (
+                <Cell key={i} fill={getColor(d.hour)} />
+              ))}
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
 
@@ -457,12 +441,11 @@ export function CrimePredictionPanel({ compact = false }) {
                 <label className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">State</label>
                 <div className="relative">
                   <select
-                    className="w-full rounded-lg border border-white/10 text-slate-200 text-xs px-2.5 py-1.5 pr-7 appearance-none focus:outline-none focus:border-violet-500/50 transition"
-                    style={{ background: "#0f172a" }}
+                    className="w-full rounded-lg border border-white/10 bg-white/5 text-slate-200 text-xs px-2.5 py-1.5 pr-7 appearance-none focus:outline-none focus:border-violet-500/50 focus:bg-white/8 transition"
                     value={state}
                     onChange={(e) => setState(e.target.value)}
                   >
-                    {STATES.map((s) => <option key={s} value={s} style={{ background: "#0f172a", color: "#e2e8f0" }}>{s}</option>)}
+                    {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                   <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 </div>
@@ -472,12 +455,11 @@ export function CrimePredictionPanel({ compact = false }) {
                 <label className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Area</label>
                 <div className="relative">
                   <select
-                    className="w-full rounded-lg border border-white/10 text-slate-200 text-xs px-2.5 py-1.5 pr-7 appearance-none focus:outline-none focus:border-violet-500/50 transition"
-                    style={{ background: "#0f172a" }}
+                    className="w-full rounded-lg border border-white/10 bg-white/5 text-slate-200 text-xs px-2.5 py-1.5 pr-7 appearance-none focus:outline-none focus:border-violet-500/50 focus:bg-white/8 transition"
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                   >
-                    {regions.map((r) => <option key={r} value={r} style={{ background: "#0f172a", color: "#e2e8f0" }}>{r}</option>)}
+                    {regions.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                   <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 </div>
@@ -504,12 +486,11 @@ export function CrimePredictionPanel({ compact = false }) {
                 <label className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Day</label>
                 <div className="relative">
                   <select
-                    className="w-full rounded-lg border border-white/10 text-slate-200 text-xs px-2.5 py-1.5 pr-7 appearance-none focus:outline-none focus:border-violet-500/50 transition"
-                    style={{ background: "#0f172a" }}
+                    className="w-full rounded-lg border border-white/10 bg-white/5 text-slate-200 text-xs px-2.5 py-1.5 pr-7 appearance-none focus:outline-none focus:border-violet-500/50 focus:bg-white/8 transition"
                     value={dow}
                     onChange={(e) => setDow(Number(e.target.value))}
                   >
-                    {DAYS.map((d, i) => <option key={d} value={i} style={{ background: "#0f172a", color: "#e2e8f0" }}>{d}</option>)}
+                    {DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
                   </select>
                   <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 </div>

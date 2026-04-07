@@ -1,0 +1,10 @@
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/
+**/node_modules/
+**/dist/
+.env
+backend/crime_reports.db
+backend/uploads/
+node_modules/
+build/

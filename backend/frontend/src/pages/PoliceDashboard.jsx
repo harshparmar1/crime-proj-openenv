@@ -12,10 +12,15 @@ import {
 } from "lucide-react";
 import { Toast } from "../components/Toast";
 import { CrimePredictionPanel } from "../components/intelligence/CrimePredictionPanel";
-import { PanicReportsPanel } from "../components/intelligence/PanicReportsPanel";
 import { API_BASE, apiGet, apiPatch, authHeaders } from "../lib/api";
 
-
+/* ── Nav items ─────────────────────────────────────── */
+const navItems = [
+  { id: "dashboard", label: "Dashboard",     icon: FaShieldAlt },
+  { id: "live",      label: "Live Reports",  icon: FaStream },
+  { id: "assigned",  label: "Assigned Cases",icon: FaClipboardList },
+  { id: "map",       label: "Map View",      icon: FaMapMarkedAlt },
+];
 
 /* ── Status badges ─────────────────────────────────── */
 const statusMeta = {
@@ -340,9 +345,6 @@ export default function PoliceDashboard() {
       .filter((r) => !q || [r.public_id, r.id, r.crime_type, r.region, r.state, r.user_email].some((v) => String(v || "").toLowerCase().includes(q)));
   }, [reports, search, statusFilter]);
 
-  const panicFiltered = useMemo(() => filtered.filter((r) => r.is_panic), [filtered]);
-  const regularFiltered = useMemo(() => filtered.filter((r) => !r.is_panic), [filtered]);
-
   const updateLocalStatus = (id, next) =>
     setReports((rs) => rs.map((r) => (r.public_id || r.id) !== id ? r : { ...r, status: next }));
 
@@ -419,8 +421,26 @@ export default function PoliceDashboard() {
             </div>
           </div>
 
-          {/* Spacer */}
-          <div className="flex-1" />
+          {/* Nav */}
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+            {navItems.map((it) => {
+              const Icon = it.icon;
+              const isActive = active === it.id;
+              return (
+                <motion.button
+                  key={it.id}
+                  type="button"
+                  whileHover={{ x: 2 }}
+                  onClick={() => { setActive(it.id); setSidebarOpen(false); }}
+                  className={`nav-item ${isActive ? "active" : ""}`}
+                >
+                  <Icon className={`text-base shrink-0 ${isActive ? "text-sky-400" : "text-slate-500"}`} />
+                  <span>{it.label}</span>
+                  {isActive && <ChevronRight size={14} className="ml-auto text-sky-400 opacity-60" />}
+                </motion.button>
+              );
+            })}
+          </nav>
 
           {/* Logout */}
           <div className="p-3 border-t border-white/8">
@@ -487,12 +507,13 @@ export default function PoliceDashboard() {
               <CrimePredictionPanel />
             </motion.section>
 
-            {/* ── Live alerts ────────────────────────── */}
-            <div>
+            {/* ── Live alerts + Map ──────────────────── */}
+            <div className="grid lg:grid-cols-12 gap-4">
+              {/* Live alerts */}
               <motion.section
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="glass-card overflow-hidden"
+                className="lg:col-span-7 glass-card overflow-hidden"
               >
                 <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
                   <div className="flex items-center gap-2.5">
@@ -545,20 +566,38 @@ export default function PoliceDashboard() {
                   </AnimatePresence>
                 </div>
               </motion.section>
-            </div>
 
-            {/* ── Panic / Emergency Reports ──────────── */}
-            <motion.section
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <PanicReportsPanel
-                reports={panicFiltered}
-                onViewEvidence={openEvidence}
-                onUpdateStatus={updateStatus}
-              />
-            </motion.section>
+              {/* Map placeholder */}
+              <motion.section
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="lg:col-span-5 glass-card overflow-hidden"
+              >
+                <div className="px-5 py-4 border-b border-white/8">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
+                      <FaMapMarkedAlt className="text-sky-400 text-sm" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-white text-sm">Map View</div>
+                      <div className="text-[10px] text-slate-500">Crime cluster visualization</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 h-[calc(100%-65px)] min-h-[240px]">
+                  <div className="h-full min-h-[220px] rounded-2xl border border-dashed border-sky-500/20 bg-gradient-to-br from-sky-500/5 to-indigo-500/5 flex flex-col items-center justify-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl bg-sky-500/15 border border-sky-500/20 flex items-center justify-center">
+                      <FaMapMarkedAlt className="text-sky-400 text-2xl" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm text-slate-200 font-medium">Map Integration Ready</div>
+                      <div className="text-xs text-slate-500 mt-1">Integrate Leaflet clusters & heatmap</div>
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            </div>
 
             {/* ── Reports Management ──────────────────── */}
             <motion.section
@@ -613,10 +652,10 @@ export default function PoliceDashboard() {
               <div className="p-4">
                 {loading ? (
                   <Spinner label="Loading reports…" />
-                ) : regularFiltered.length === 0 ? (
+                ) : filtered.length === 0 ? (
                   <div className="text-center py-10">
                     <FileText size={32} className="mx-auto text-slate-700 mb-3" />
-                    <div className="text-slate-400 text-sm">No matching non-emergency reports found.</div>
+                    <div className="text-slate-400 text-sm">No matching reports found.</div>
                   </div>
                 ) : (
                   <div className="overflow-auto rounded-xl border border-white/8">
@@ -631,7 +670,7 @@ export default function PoliceDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/6">
-                        {regularFiltered.map((r) => {
+                        {filtered.map((r) => {
                           const id   = r.public_id || r.id;
                           const meta = statusMeta[r.status] || statusMeta.Pending;
                           return (
@@ -696,6 +735,29 @@ export default function PoliceDashboard() {
               </div>
             </motion.section>
 
+            {/* ── Assigned Cases ──────────────────────── */}
+            <motion.section
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="glass-card p-5"
+            >
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+                  <FaClipboardList className="text-amber-400 text-sm" />
+                </div>
+                <div>
+                  <div className="font-bold text-white text-sm">Assigned Cases</div>
+                  <div className="text-[10px] text-slate-500">Ready for future assignment logic (by station / officer ID).</div>
+                </div>
+              </div>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Current view uses the same reports list. Add assignment fields server-side (e.g.{" "}
+                <code className="text-sky-400 bg-sky-500/5 border border-sky-500/15 px-1.5 py-0.5 rounded text-xs font-mono">assigned_to</code>,{" "}
+                <code className="text-sky-400 bg-sky-500/5 border border-sky-500/15 px-1.5 py-0.5 rounded text-xs font-mono">station_id</code>
+                ) and filter here.
+              </p>
+            </motion.section>
           </div>
         </main>
       </div>

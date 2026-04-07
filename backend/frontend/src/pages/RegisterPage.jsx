@@ -203,8 +203,7 @@ export default function RegisterPage() {
               className="space-y-2 overflow-hidden"
             >
               <label className="block text-[11px] font-semibold text-violet-400 uppercase tracking-widest">
-                Police Registration Secret(use this code:-"crime-police-local-2026")
-                
+                Police Registration Secret
               </label>
               <div className="relative group">
                 <UserCog size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-violet-400 transition-colors z-10 pointer-events-none" />
