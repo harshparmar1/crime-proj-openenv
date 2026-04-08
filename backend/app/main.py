@@ -5,16 +5,16 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load .env before importing config so POLICE_REGISTER_SECRET / ALLOW_OPEN_* are visible.
+# Load .env before importing config
 _backend_root = Path(__file__).resolve().parent.parent
 load_dotenv(dotenv_path=_backend_root / ".env", override=True)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .core.config import CORS_ORIGINS
-from .db import Base, engine
-from .routers import (
+from backend.core.config import CORS_ORIGINS
+from backend.db import Base, engine
+from backend.routers import (
     ai_routes,
     analytics_routes,
     auth_routes,
@@ -29,9 +29,9 @@ from .routers import (
     case_intelligence_routes,
     suspect_routes,
 )
-from .services.migrate import run_schema_migrations
+from backend.services.migrate import run_schema_migrations
 
-# Optional legacy uploads path (proof stored primarily in DB)
+# Upload directory
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="CRIMEWATCH AI ",
+    title="CRIMEWATCH AI",
     version="3.0.0",
     lifespan=lifespan,
 )
@@ -58,6 +58,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Routers
 app.include_router(auth_routes.router)
 app.include_router(analytics_routes.router)
 app.include_router(reports_routes.router)
