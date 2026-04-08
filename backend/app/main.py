@@ -5,16 +5,16 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load .env before importing config
+# Load .env
 _backend_root = Path(__file__).resolve().parent.parent
 load_dotenv(dotenv_path=_backend_root / ".env", override=True)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.core.config import CORS_ORIGINS
-from backend.db import Base, engine
-from backend.routers import (
+from core.config import CORS_ORIGINS
+from db import Base, engine
+from routers import (
     ai_routes,
     analytics_routes,
     auth_routes,
@@ -29,7 +29,7 @@ from backend.routers import (
     case_intelligence_routes,
     suspect_routes,
 )
-from backend.services.migrate import run_schema_migrations
+from services.migrate import run_schema_migrations
 
 # Upload directory
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
