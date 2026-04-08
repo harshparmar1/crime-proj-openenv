@@ -24,12 +24,12 @@ from openai import OpenAI
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN = os.getenv("HF_TOKEN", "")
-LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME", "crime-intelligence-api")
+HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 # Validate required variables
 if not HF_TOKEN:
-    raise ValueError("HF_TOKEN environment variable is not set")
+    raise ValueError("HF_TOKEN environment variable is not set. Set it before running: $env:HF_TOKEN='your_token_here'")
 
 # ============================================================================
 # INITIALIZE OPENAI CLIENT

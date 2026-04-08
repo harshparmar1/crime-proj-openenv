@@ -1,0 +1,7 @@
+# Inference Script Requirements
+# =============================
+# Minimal dependencies for running inference.py
+
+openai>=1.54.0
+python-dotenv>=1.0.1
+pydantic>=2.10.0

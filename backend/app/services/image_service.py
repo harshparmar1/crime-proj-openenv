@@ -83,51 +83,8 @@ def analyze_image_bytes(data: bytes) -> Dict[str, Any]:
 
 
 def _try_yolo(data: bytes) -> Dict[str, Any] | None:
-    try:
-        from ultralytics import YOLO
-    except ImportError:
-        return None
-    import cv2
-
-    arr = np.frombuffer(data, dtype=np.uint8)
-    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-    if img is None:
-        return None
-    model = YOLO("yolov8n.pt")
-    pred = model(img, verbose=False)[0]
-    names = pred.names or {}
-    weapon_ids = {k for k, v in names.items() if any(x in v.lower() for x in ("knife", "scissors"))}
-    vehicle_ids = {k for k, v in names.items() if any(x in v.lower() for x in ("car", "bus", "truck", "motor", "bike", "bicycle"))}
-
-    w_conf = 0.0
-    v_conf = 0.0
-    w_labs: List[str] = []
-    v_labs: List[str] = []
-    if pred.boxes is not None:
-        for b in pred.boxes:
-            cls = int(b.cls[0])
-            conf = float(b.conf[0])
-            name = names.get(cls, str(cls))
-            if cls in weapon_ids:
-                w_conf = max(w_conf, conf)
-                w_labs.append(name)
-            if cls in vehicle_ids:
-                v_conf = max(v_conf, conf)
-                v_labs.append(name)
-
-    if w_conf == 0 and v_conf == 0:
-        return {
-            "weapon": {"detected": False, "confidence": 0.0, "labels": []},
-            "vehicle": {"detected": False, "confidence": 0.0, "labels": []},
-            "notes": ["yolo_no_vehicle_weapon_class"],
-        }
-    return {
-        "weapon": {"detected": w_conf >= 0.25, "confidence": round(w_conf, 2), "labels": list(set(w_labs))},
-        "vehicle": 
-        {"detected": v_conf >= 0.25, "confidence": round(v_conf, 2), "labels": list(set(v_labs))},
-        "notes": ["yolov8n"],
-    }
-
+    # 🚫 Disabled YOLO to avoid HF Spaces runtime error (model download issue)
+    return None
 
 def map_cv_to_form_fields(analysis: Dict[str, Any]) -> Dict[str, str]:
     weapon = "Yes" if analysis.get("weapon", {}).get("detected") else "No"
