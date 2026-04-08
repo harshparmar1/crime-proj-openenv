@@ -44,8 +44,13 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
     try {
-      await apiPost("/auth/register", form);
-      navigate("/verify-otp", { state: { email: form.email } });
+      const res = await apiPost("/auth/register", form);
+      navigate("/verify-otp", {
+        state: {
+          email: form.email,
+          devOtp: res?.dev_otp || "",
+        },
+      });
     } catch (err) {
       setError(err.message);
     } finally {

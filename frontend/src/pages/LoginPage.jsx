@@ -43,6 +43,10 @@ export default function LoginPage() {
         navigate("/");
       }
     } catch (err) {
+      if (err.message === "Please verify OTP first") {
+        navigate("/verify-otp", { state: { email } });
+        return;
+      }
       setError(err.message);
     } finally {
       setLoading(false);

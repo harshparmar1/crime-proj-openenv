@@ -1,17 +1,15 @@
+---
+title: AI-Powered Crime Intelligence Platform
+emoji: 🚨
+colorFrom: red
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # AI-Powered Real-Time Crime Intelligence Platform
 
 Full-stack system combining **React + Tailwind**, **FastAPI**, **WebSockets**, **scikit-learn** risk models, **OpenCV** image heuristics (optional **YOLOv8**), **OpenEnv** RL evaluation hooks, and optional **OpenAI** for chat + baseline agents.
-
-
----
-title: Crime Project
-emoji: 🚔
-colorFrom: blue
-colorTo: purple
-sdk: docker
-app_file: app.py
-pinned: false
----
 
 ## Architecture
 

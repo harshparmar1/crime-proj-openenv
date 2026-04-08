@@ -9,12 +9,15 @@ export default function OtpPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const prefillEmail = location.state?.email || "";
+  const initialDevOtp = location.state?.devOtp || "";
 
   const [email, setEmail] = useState(prefillEmail);
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [devOtp, setDevOtp] = useState(initialDevOtp);
 
   const onVerify = async (e) => {
     e.preventDefault();
@@ -28,6 +31,23 @@ export default function OtpPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onResend = async () => {
+    if (!email) {
+      setError("Please enter your email first");
+      return;
+    }
+    setResendLoading(true);
+    setError("");
+    try {
+      const res = await apiPost("/auth/resend-otp", { email });
+      setDevOtp(res?.dev_otp || "");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -60,6 +80,14 @@ export default function OtpPage() {
             />
           ))}
         </motion.div>
+
+        {devOtp ? (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+            <p className="text-amber-200 text-sm">
+              Dev OTP (SMTP not configured): <span className="font-mono font-semibold tracking-wider">{devOtp}</span>
+            </p>
+          </div>
+        ) : null}
 
         {/* Email */}
         <motion.div
@@ -173,7 +201,14 @@ export default function OtpPage() {
 
         <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
           <RefreshCw size={12} />
-          <span>Didn't receive the code? Check spam or re-register.</span>
+          <button
+            type="button"
+            onClick={onResend}
+            disabled={resendLoading || success}
+            className="text-sky-400 hover:text-sky-300 disabled:text-slate-500 disabled:cursor-not-allowed"
+          >
+            {resendLoading ? "Sending OTP..." : "Didn't receive OTP? Resend"}
+          </button>
         </div>
       </form>
     </AuthLayout>

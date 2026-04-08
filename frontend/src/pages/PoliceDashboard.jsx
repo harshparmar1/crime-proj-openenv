@@ -8,7 +8,7 @@ import {
 import {
   Shield, Activity, Bell, Radio, LogOut, Menu, X,
   Eye, Zap, MapPin, Clock, User, Phone, FileText,
-  ChevronRight, AlertTriangle, CheckCircle2, XCircle, Search
+  ChevronRight, AlertTriangle, CheckCircle2, XCircle, Search, BarChart3
 } from "lucide-react";
 import { Toast } from "../components/Toast";
 import { CrimePredictionPanel } from "../components/intelligence/CrimePredictionPanel";
@@ -417,6 +417,44 @@ export default function PoliceDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Navigation Menu - Police Agent Features */}
+            <div className="mt-6 px-3 space-y-1.5">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-2 mb-3">Police Intelligence</div>
+              
+              {[
+                { id: "dashboard",     label: "Dashboard",              icon: Activity,    color: "sky" },
+                { id: "dispatch",      label: "Dispatch & Resources",   icon: Radio,       color: "emerald" },
+                { id: "case-intel",    label: "Case Intelligence",      icon: FaClipboardList, color: "violet" },
+                { id: "suspects",      label: "Suspect Database",       icon: User,        color: "rose" },
+                { id: "patrol",        label: "Patrol Intelligence",    icon: MapPin,      color: "amber" },
+                { id: "investigation", label: "Investigation Tools",    icon: Search,      color: "indigo" },
+                { id: "analytics",     label: "Performance Analytics",  icon: BarChart3,   color: "cyan" },
+              ].map(({ id, label, icon: Icon, color }) => {
+                const isActive = active === id;
+                const colorClasses = {
+                  sky:     isActive ? "border-sky-500/30 bg-sky-500/10 text-sky-300" : "border-white/8 text-slate-300 hover:border-sky-500/20 hover:bg-sky-500/10",
+                  emerald: isActive ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-white/8 text-slate-300 hover:border-emerald-500/20 hover:bg-emerald-500/10",
+                  violet:  isActive ? "border-violet-500/30 bg-violet-500/10 text-violet-300" : "border-white/8 text-slate-300 hover:border-violet-500/20 hover:bg-violet-500/10",
+                  rose:    isActive ? "border-rose-500/30 bg-rose-500/10 text-rose-300" : "border-white/8 text-slate-300 hover:border-rose-500/20 hover:bg-rose-500/10",
+                  amber:   isActive ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : "border-white/8 text-slate-300 hover:border-amber-500/20 hover:bg-amber-500/10",
+                  indigo:  isActive ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-300" : "border-white/8 text-slate-300 hover:border-indigo-500/20 hover:bg-indigo-500/10",
+                  cyan:    isActive ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" : "border-white/8 text-slate-300 hover:border-cyan-500/20 hover:bg-cyan-500/10",
+                };
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => { setActive(id); setSidebarOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition text-sm font-medium ${colorClasses[color]}`}
+                  >
+                    <Icon size={15} />
+                    <span>{label}</span>
+                    {isActive && <ChevronRight size={14} className="ml-auto" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Spacer */}
@@ -469,233 +507,539 @@ export default function PoliceDashboard() {
           </div>
 
           <div className="p-4 md:p-6 space-y-6">
-            {/* ── Stats ──────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <StatCard label="Total Reports" value={stats.total}     icon={FaClipboardList} color="sky"     sub="All time" />
-              <StatCard label="Pending"       value={stats.pending}   icon={AlertTriangle}   color="amber"   sub="Awaiting review" />
-              <StatCard label="Investigating" value={stats.resolving} icon={Activity}        color="sky"     sub="Active cases" />
-              <StatCard label="Resolved"      value={stats.resolved}  icon={CheckCircle2}    color="emerald" sub="Closed cases" />
-            </div>
+            {/* ── DASHBOARD VIEW ────────────────────── */}
+            {active === "dashboard" && (
+              <>
+                {/* Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <StatCard label="Total Reports" value={stats.total}     icon={FaClipboardList} color="sky"     sub="All time" />
+                  <StatCard label="Pending"       value={stats.pending}   icon={AlertTriangle}   color="amber"   sub="Awaiting review" />
+                  <StatCard label="Investigating" value={stats.resolving} icon={Activity}        color="sky"     sub="Active cases" />
+                  <StatCard label="Resolved"      value={stats.resolved}  icon={CheckCircle2}    color="emerald" sub="Closed cases" />
+                </div>
 
-            {/* ── Crime Prediction AI ─────────────────── */}
-            <motion.section
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="glass-card p-4 md:p-5"
-            >
-              <CrimePredictionPanel />
-            </motion.section>
+                {/* Crime Prediction AI */}
+                <motion.section
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="glass-card p-4 md:p-5"
+                >
+                  <CrimePredictionPanel />
+                </motion.section>
 
-            {/* ── Live alerts ────────────────────────── */}
-            <div>
-              <motion.section
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="glass-card overflow-hidden"
-              >
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center">
-                      <Bell size={15} className="text-rose-400" />
+                {/* Live alerts */}
+                <div>
+                  <motion.section
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="glass-card overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center">
+                          <Bell size={15} className="text-rose-400" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-white text-sm">Live Alerts</div>
+                          <div className="text-[10px] text-slate-500">Real-time incident feed</div>
+                        </div>
+                      </div>
+                      <motion.button
+                        type="button"
+                        whileHover={{ scale: 1.05 }}
+                        onClick={() => setAlerts((a) => [{ id: `m_${Date.now()}`, crime_type: "Robbery", location: "Mumbai", time: nowClock(), ts: Date.now() }, ...a].slice(0, 6))}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-rose-400/25 bg-rose-500/8 text-rose-400 hover:bg-rose-500/15 transition font-medium"
+                      >
+                        + Mock alert
+                      </motion.button>
                     </div>
-                    <div>
-                      <div className="font-bold text-white text-sm">Live Alerts</div>
-                      <div className="text-[10px] text-slate-500">Real-time incident feed</div>
+                    <div className="p-4 grid sm:grid-cols-2 gap-3">
+                      <AnimatePresence>
+                        {alerts.slice(0, 6).map((a) => (
+                          <motion.div
+                            key={a.id}
+                            initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="rounded-2xl border border-rose-400/20 p-4 relative overflow-hidden"
+                            style={{ background: "linear-gradient(135deg, rgba(244,63,94,0.12), rgba(239,68,68,0.06))" }}
+                          >
+                            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-rose-500/40 to-transparent" />
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="text-sm font-bold text-white">{a.crime_type}</div>
+                                <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
+                                  <MapPin size={10} /> {a.location}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 text-[10px] text-slate-500 shrink-0">
+                                <Clock size={10} /> {a.time}
+                              </div>
+                            </div>
+                            <div className="mt-3 flex items-center gap-2 text-[11px] text-rose-300">
+                              <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+                              Incoming · Priority High
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </motion.section>
+                </div>
+
+                {/* Panic / Emergency Reports */}
+                <motion.section
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <PanicReportsPanel
+                    reports={panicFiltered}
+                    onViewEvidence={openEvidence}
+                    onUpdateStatus={updateStatus}
+                  />
+                </motion.section>
+
+                {/* Reports Management */}
+                <motion.section
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="glass-card overflow-hidden"
+                >
+                  <div className="px-5 py-4 border-b border-white/8 flex flex-wrap gap-3 items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center">
+                        <FaClipboardList className="text-violet-400 text-sm" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-white text-sm">Reports Management</div>
+                        <div className="text-[10px] text-slate-500">Accept · Reject · Investigate · Resolve</div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Search */}
+                      <div className="relative">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <input
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          placeholder="Search reports…"
+                          className="input-field pl-9 pr-3 py-2 text-sm w-44 sm:w-56"
+                        />
+                      </div>
+
+                      {/* Status filter */}
+                      <div className="flex gap-1 rounded-xl border border-white/8 bg-black/20 p-1 flex-wrap">
+                        {["All", "Pending", "Investigating", "Resolved", "Rejected"].map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setStatusFilter(s)}
+                            className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition ${
+                              statusFilter === s
+                                ? "bg-white/12 border-white/20 text-white"
+                                : "bg-transparent border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/6"
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.05 }}
-                    onClick={() => setAlerts((a) => [{ id: `m_${Date.now()}`, crime_type: "Robbery", location: "Mumbai", time: nowClock(), ts: Date.now() }, ...a].slice(0, 6))}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-rose-400/25 bg-rose-500/8 text-rose-400 hover:bg-rose-500/15 transition font-medium"
-                  >
-                    + Mock alert
-                  </motion.button>
-                </div>
-                <div className="p-4 grid sm:grid-cols-2 gap-3">
-                  <AnimatePresence>
-                    {alerts.slice(0, 6).map((a) => (
-                      <motion.div
-                        key={a.id}
-                        initial={{ opacity: 0, y: 8, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="rounded-2xl border border-rose-400/20 p-4 relative overflow-hidden"
-                        style={{ background: "linear-gradient(135deg, rgba(244,63,94,0.12), rgba(239,68,68,0.06))" }}
-                      >
-                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-rose-500/40 to-transparent" />
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="text-sm font-bold text-white">{a.crime_type}</div>
-                            <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
-                              <MapPin size={10} /> {a.location}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1 text-[10px] text-slate-500 shrink-0">
-                            <Clock size={10} /> {a.time}
-                          </div>
-                        </div>
-                        <div className="mt-3 flex items-center gap-2 text-[11px] text-rose-300">
-                          <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
-                          Incoming · Priority High
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </motion.section>
-            </div>
 
-            {/* ── Panic / Emergency Reports ──────────── */}
-            <motion.section
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <PanicReportsPanel
-                reports={panicFiltered}
-                onViewEvidence={openEvidence}
-                onUpdateStatus={updateStatus}
-              />
-            </motion.section>
+                  <div className="p-4">
+                    {loading ? (
+                      <Spinner label="Loading reports…" />
+                    ) : regularFiltered.length === 0 ? (
+                      <div className="text-center py-10">
+                        <FileText size={32} className="mx-auto text-slate-700 mb-3" />
+                        <div className="text-slate-400 text-sm">No matching non-emergency reports found.</div>
+                      </div>
+                    ) : (
+                      <div className="overflow-auto rounded-xl border border-white/8">
+                        <table className="min-w-full text-sm">
+                          <thead>
+                            <tr style={{ background: "rgba(0,0,0,0.3)" }}>
+                              {["Report ID", "Crime Type", "Location", "Reporter", "Time", "Proof", "Status", "Actions"].map((h) => (
+                                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                                  {h}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/6">
+                            {regularFiltered.map((r) => {
+                              const id   = r.public_id || r.id;
+                              const meta = statusMeta[r.status] || statusMeta.Pending;
+                              return (
+                                <motion.tr
+                                  key={id}
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  className="hover:bg-white/3 transition"
+                                >
+                                  <td className="px-4 py-3 font-mono text-xs text-sky-400 whitespace-nowrap">{id}</td>
+                                  <td className="px-4 py-3 text-slate-100 font-medium whitespace-nowrap">{r.crime_type}</td>
+                                  <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
+                                    {r.region}{r.state ? <span className="text-slate-500">, {r.state}</span> : null}
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-400 text-xs max-w-[130px] truncate" title={r.user_email || ""}>
+                                    {r.user_email || "—"}
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-300 whitespace-nowrap text-xs">{r.time}</td>
+                                  <td className="px-4 py-3 text-slate-400 text-xs">
+                                    {[r.has_file && "Media", r.has_voice && "Voice"].filter(Boolean).join(" + ") || "—"}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${meta.badge}`}
+                                      style={{ boxShadow: `0 0 12px ${meta.glow}` }}
+                                    >
+                                      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                                      {r.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex flex-wrap gap-1.5">
+                                      <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={() => updateStatus(r, "Investigating")}
+                                        className="px-2.5 py-1 rounded-lg bg-sky-500/12 border border-sky-500/25 hover:bg-sky-500/25 text-xs text-sky-300 flex items-center gap-1 transition">
+                                        <FaCheck className="text-[10px]" /> Accept
+                                      </motion.button>
+                                      <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={() => updateStatus(r, "Rejected")}
+                                        className="px-2.5 py-1 rounded-lg bg-rose-500/12 border border-rose-500/25 hover:bg-rose-500/25 text-xs text-rose-300 flex items-center gap-1 transition">
+                                        <FaBan className="text-[10px]" /> Reject
+                                      </motion.button>
+                                      <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={() => updateStatus(r, "Investigating")}
+                                        className="px-2.5 py-1 rounded-lg bg-indigo-500/12 border border-indigo-500/25 hover:bg-indigo-500/25 text-xs text-indigo-300 transition">
+                                        Investigate
+                                      </motion.button>
+                                      <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={() => updateStatus(r, "Resolved")}
+                                        className="px-2.5 py-1 rounded-lg bg-emerald-500/12 border border-emerald-500/25 hover:bg-emerald-500/25 text-xs text-emerald-300 transition">
+                                        Resolve
+                                      </motion.button>
+                                      <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={() => openEvidence(r)}
+                                        className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-slate-300 flex items-center gap-1 transition">
+                                        <Eye size={12} /> Evidence
+                                      </motion.button>
+                                    </div>
+                                  </td>
+                                </motion.tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </motion.section>
+              </>
+            )}
 
-            {/* ── Reports Management ──────────────────── */}
-            <motion.section
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="glass-card overflow-hidden"
-            >
-              <div className="px-5 py-4 border-b border-white/8 flex flex-wrap gap-3 items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center">
-                    <FaClipboardList className="text-violet-400 text-sm" />
+            {/* ── DISPATCH & RESOURCES VIEW ─────────── */}
+            {active === "dispatch" && (
+              <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                    <Radio size={18} className="text-emerald-400" />
                   </div>
                   <div>
-                    <div className="font-bold text-white text-sm">Reports Management</div>
-                    <div className="text-[10px] text-slate-500">Accept · Reject · Investigate · Resolve</div>
+                    <h2 className="text-xl font-bold text-white">Dispatch & Resources</h2>
+                    <p className="text-sm text-slate-400">Smart unit dispatch and officer availability management</p>
                   </div>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* Search */}
-                  <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search reports…"
-                      className="input-field pl-9 pr-3 py-2 text-sm w-44 sm:w-56"
-                    />
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-emerald-300 mb-3">Available Units</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                        <span className="text-sm text-white">Unit Alpha-1</span>
+                        <span className="text-xs px-2 py-1 rounded bg-emerald-500/20 text-emerald-300">Available</span>
+                      </div>
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                        <span className="text-sm text-white">Unit Bravo-2</span>
+                        <span className="text-xs px-2 py-1 rounded bg-amber-500/20 text-amber-300">En Route</span>
+                      </div>
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                        <span className="text-sm text-white">Unit Charlie-3</span>
+                        <span className="text-xs px-2 py-1 rounded bg-rose-500/20 text-rose-300">On Scene</span>
+                      </div>
+                    </div>
                   </div>
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-sky-300 mb-3">Recent Dispatches</h3>
+                    <div className="space-y-2 text-xs text-slate-300">
+                      <div className="flex justify-between p-2 rounded-lg bg-sky-500/10">
+                        <span>Robbery - Mumbai</span>
+                        <span className="text-slate-500">2 min ago</span>
+                      </div>
+                      <div className="flex justify-between p-2 rounded-lg bg-sky-500/10">
+                        <span>Assault - Pune</span>
+                        <span className="text-slate-500">5 min ago</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            )}
 
-                  {/* Status filter */}
-                  <div className="flex gap-1 rounded-xl border border-white/8 bg-black/20 p-1 flex-wrap">
-                    {["All", "Pending", "Investigating", "Resolved", "Rejected"].map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setStatusFilter(s)}
-                        className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition ${
-                          statusFilter === s
-                            ? "bg-white/12 border-white/20 text-white"
-                            : "bg-transparent border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/6"
-                        }`}
-                      >
-                        {s}
-                      </button>
+            {/* ── CASE INTELLIGENCE VIEW ────────────── */}
+            {active === "case-intel" && (
+              <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center">
+                    <FaClipboardList className="text-violet-400 text-lg" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Case Intelligence</h2>
+                    <p className="text-sm text-slate-400">Pattern detection and case linking</p>
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-violet-300 mb-3">Similar Crimes Detected</h3>
+                    <div className="space-y-2">
+                      <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                        <div className="text-sm font-medium text-white">3 Robberies - Same MO</div>
+                        <div className="text-xs text-slate-400 mt-1">Mumbai • 7PM-9PM • Jewelry stores</div>
+                      </div>
+                      <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                        <div className="text-sm font-medium text-white">Possible Serial Theft</div>
+                        <div className="text-xs text-slate-400 mt-1">Bangalore • Apartment complexes • 85% match</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-indigo-300 mb-3">Linked Cases</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                        <span className="text-sm text-white">Case #2024-001</span>
+                        <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded">Related</span>
+                      </div>
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                        <span className="text-sm text-white">Case #2024-012</span>
+                        <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded">Related</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            )}
+
+            {/* ── SUSPECT DATABASE VIEW ────────────── */}
+            {active === "suspects" && (
+              <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center">
+                    <User size={18} className="text-rose-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Suspect Database</h2>
+                    <p className="text-sm text-slate-400">Known offender lookup and MO search</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <input type="text" placeholder="Search by photo, name, or MO..." className="input-field flex-1" />
+                    <button className="px-4 py-2 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 transition font-medium text-sm">Search</button>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="border border-white/8 rounded-xl p-4 bg-white/3">
+                        <div className="w-full h-24 bg-slate-700 rounded-lg mb-3 flex items-center justify-center">
+                          <div className="text-slate-500">Photo</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-sm font-bold text-white">Suspect #{i}</div>
+                          <div className="text-xs text-slate-400">MO: Theft, Robbery</div>
+                          <div className="text-xs text-yellow-400 mt-2">⚠️ High Risk</div>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
-              </div>
+              </motion.section>
+            )}
 
-              <div className="p-4">
-                {loading ? (
-                  <Spinner label="Loading reports…" />
-                ) : regularFiltered.length === 0 ? (
-                  <div className="text-center py-10">
-                    <FileText size={32} className="mx-auto text-slate-700 mb-3" />
-                    <div className="text-slate-400 text-sm">No matching non-emergency reports found.</div>
+            {/* ── PATROL INTELLIGENCE VIEW ────────── */}
+            {active === "patrol" && (
+              <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+                    <MapPin size={18} className="text-amber-400" />
                   </div>
-                ) : (
-                  <div className="overflow-auto rounded-xl border border-white/8">
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr style={{ background: "rgba(0,0,0,0.3)" }}>
-                          {["Report ID", "Crime Type", "Location", "Reporter", "Time", "Proof", "Status", "Actions"].map((h) => (
-                            <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/6">
-                        {regularFiltered.map((r) => {
-                          const id   = r.public_id || r.id;
-                          const meta = statusMeta[r.status] || statusMeta.Pending;
-                          return (
-                            <motion.tr
-                              key={id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="hover:bg-white/3 transition"
-                            >
-                              <td className="px-4 py-3 font-mono text-xs text-sky-400 whitespace-nowrap">{id}</td>
-                              <td className="px-4 py-3 text-slate-100 font-medium whitespace-nowrap">{r.crime_type}</td>
-                              <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
-                                {r.region}{r.state ? <span className="text-slate-500">, {r.state}</span> : null}
-                              </td>
-                              <td className="px-4 py-3 text-slate-400 text-xs max-w-[130px] truncate" title={r.user_email || ""}>
-                                {r.user_email || "—"}
-                              </td>
-                              <td className="px-4 py-3 text-slate-300 whitespace-nowrap text-xs">{r.time}</td>
-                              <td className="px-4 py-3 text-slate-400 text-xs">
-                                {[r.has_file && "Media", r.has_voice && "Voice"].filter(Boolean).join(" + ") || "—"}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${meta.badge}`}
-                                  style={{ boxShadow: `0 0 12px ${meta.glow}` }}
-                                >
-                                  <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-                                  {r.status}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex flex-wrap gap-1.5">
-                                  <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={() => updateStatus(r, "Investigating")}
-                                    className="px-2.5 py-1 rounded-lg bg-sky-500/12 border border-sky-500/25 hover:bg-sky-500/25 text-xs text-sky-300 flex items-center gap-1 transition">
-                                    <FaCheck className="text-[10px]" /> Accept
-                                  </motion.button>
-                                  <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={() => updateStatus(r, "Rejected")}
-                                    className="px-2.5 py-1 rounded-lg bg-rose-500/12 border border-rose-500/25 hover:bg-rose-500/25 text-xs text-rose-300 flex items-center gap-1 transition">
-                                    <FaBan className="text-[10px]" /> Reject
-                                  </motion.button>
-                                  <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={() => updateStatus(r, "Investigating")}
-                                    className="px-2.5 py-1 rounded-lg bg-indigo-500/12 border border-indigo-500/25 hover:bg-indigo-500/25 text-xs text-indigo-300 transition">
-                                    Investigate
-                                  </motion.button>
-                                  <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={() => updateStatus(r, "Resolved")}
-                                    className="px-2.5 py-1 rounded-lg bg-emerald-500/12 border border-emerald-500/25 hover:bg-emerald-500/25 text-xs text-emerald-300 transition">
-                                    Resolve
-                                  </motion.button>
-                                  <motion.button whileHover={{ scale: 1.05 }} type="button" onClick={() => openEvidence(r)}
-                                    className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-slate-300 flex items-center gap-1 transition">
-                                    <Eye size={12} /> Evidence
-                                  </motion.button>
-                                </div>
-                              </td>
-                            </motion.tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Patrol Intelligence</h2>
+                    <p className="text-sm text-slate-400">Beat recommendations and hotspot analysis</p>
                   </div>
-                )}
-              </div>
-            </motion.section>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-amber-300 mb-3">High-Risk Beats (Next 4 Hours)</h3>
+                    <div className="space-y-2">
+                      <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                        <div className="text-sm font-medium text-white">Mumbai Downtown</div>
+                        <div className="text-xs text-slate-400">Risk Score: 87/100 • Evening shift</div>
+                      </div>
+                      <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                        <div className="text-sm font-medium text-white">Pune Market Area</div>
+                        <div className="text-xs text-slate-400">Risk Score: 64/100 • Moving pattern</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-green-300 mb-3">Recommended Patrol Routes</h3>
+                    <div className="space-y-2">
+                      <button className="w-full p-2 rounded-lg bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition text-left">
+                        <div className="text-sm font-medium text-white">Route Alpha</div>
+                        <div className="text-xs text-slate-400">3.2 km • 45 min • 2 hotspots</div>
+                      </button>
+                      <button className="w-full p-2 rounded-lg bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition text-left">
+                        <div className="text-sm font-medium text-white">Route Beta</div>
+                        <div className="text-xs text-slate-400">2.8 km • 38 min • 1 hotspot</div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            )}
 
+            {/* ── INVESTIGATION TOOLS VIEW ────────── */}
+            {active === "investigation" && (
+              <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center">
+                    <Search size={18} className="text-indigo-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Investigation Tools</h2>
+                    <p className="text-sm text-slate-400">Timeline, geofencing, and evidence management</p>
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-indigo-300 mb-3">Crime Timeline</h3>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex gap-2">
+                        <div className="w-2 h-2 rounded-full bg-indigo-400 mt-1 flex-shrink-0" />
+                        <div>
+                          <div className="text-white">Report Filed</div>
+                          <div className="text-slate-500">8:30 PM</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="w-2 h-2 rounded-full bg-indigo-400 mt-1 flex-shrink-0" />
+                        <div>
+                          <div className="text-white">Unit Dispatched</div>
+                          <div className="text-slate-500">8:32 PM</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="w-2 h-2 rounded-full bg-indigo-400 mt-1 flex-shrink-0" />
+                        <div>
+                          <div className="text-white">Unit on Scene</div>
+                          <div className="text-slate-500">8:41 PM</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-cyan-300 mb-3">Geofencing Alerts</h3>
+                    <div className="space-y-2">
+                      <button className="w-full p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition text-left text-sm">
+                        <div className="font-medium text-white">Set Perimeter</div>
+                        <div className="text-xs text-slate-400">Active zones: 3</div>
+                      </button>
+                      <div className="text-xs text-slate-400 p-2">
+                        <div className="font-medium text-cyan-300">Recent Alert:</div>
+                        <div>Suspect left monitored area • 2:15 PM</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-violet-300 mb-3">Evidence Hub</h3>
+                    <div className="space-y-2">
+                      <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                        <div className="text-sm font-medium text-white">3 Photos</div>
+                        <div className="text-xs text-slate-400">From incident scene</div>
+                      </div>
+                      <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                        <div className="text-sm font-medium text-white">2 Videos</div>
+                        <div className="text-xs text-slate-400">CCTV footage</div>
+                      </div>
+                      <button className="w-full mt-2 px-3 py-1.5 text-xs rounded-lg bg-violet-500/20 text-violet-300 hover:bg-violet-500/30 transition">Upload Evidence</button>
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            )}
+
+            {/* ── PERFORMANCE ANALYTICS VIEW ──────── */}
+            {active === "analytics" && (
+              <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center">
+                    <BarChart3 size={18} className="text-cyan-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Performance Analytics</h2>
+                    <p className="text-sm text-slate-400">KPIs, trends, and training recommendations</p>
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-cyan-300 mb-3">Officer KPIs (This Month)</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-cyan-500/10">
+                        <span className="text-white">Avg Response Time</span>
+                        <span className="text-cyan-300 font-bold">8.2 min</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-cyan-500/10">
+                        <span className="text-white">Case Clearance Rate</span>
+                        <span className="text-emerald-300 font-bold">72%</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-cyan-500/10">
+                        <span className="text-white">Community Safety</span>
+                        <span className="text-emerald-300 font-bold">↑ 12%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                    <h3 className="text-sm font-bold text-sky-300 mb-3">Crime Trends</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-sky-500/10">
+                        <span className="text-white">Theft (This Week)</span>
+                        <span className="text-rose-300 font-bold">↑ 8 reports</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-sky-500/10">
+                        <span className="text-white">Robbery (30 days)</span>
+                        <span className="text-emerald-300 font-bold">↓ 15%</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-sky-500/10">
+                        <span className="text-white">Total Crime Index</span>
+                        <span className="text-sky-300 font-bold">Stable</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="border border-white/8 rounded-xl p-4 bg-white/3">
+                  <h3 className="text-sm font-bold text-amber-300 mb-3">Training Recommendations</h3>
+                  <div className="space-y-2">
+                    <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <div className="text-sm font-medium text-white">3 Officers need Cybercrime training</div>
+                      <div className="text-xs text-slate-400">Based on case analysis trends</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <div className="text-sm font-medium text-white">5 Officers exceed response time benchmark</div>
+                      <div className="text-xs text-slate-400">Consider shift optimization</div>
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            )}
           </div>
         </main>
       </div>
