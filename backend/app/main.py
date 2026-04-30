@@ -12,9 +12,9 @@ load_dotenv(dotenv_path=_backend_root / ".env", override=True)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.config import CORS_ORIGINS
-from db import Base, engine
-from routers import (
+from .core.config import CORS_ORIGINS
+from .db import Base, engine
+from .routers import (
     ai_routes,
     analytics_routes,
     auth_routes,
@@ -29,7 +29,7 @@ from routers import (
     case_intelligence_routes,
     suspect_routes,
 )
-from services.migrate import run_schema_migrations
+from .services.migrate import run_schema_migrations
 
 # Upload directory
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
@@ -75,6 +75,16 @@ app.include_router(case_intelligence_routes.router)
 app.include_router(suspect_routes.router)
 
 
-@app.get("/health")
+@app.get("/")
+def home():
+    return {"status": "ok"}
+
+
+@app.get("/health") 
 def health():
     return {"status": "ok", "service": "crime-intelligence-api"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=7860)

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from ..core.state_regions import STATE_REGIONS
 from ..db import Report, User
 from ..deps import get_current_user, get_db, optional_current_user
-from ..services.geo import approximate_lat_lng
+from ..services.geo import approximate_lat_lng, format_current_location
 from ..services.notify_service import broadcast_targets_for_report, create_notification
 from ..services.ws_hub import hub
 
@@ -136,6 +136,7 @@ def _report_public_dict(r: Report) -> dict:
         "public_id": r.public_id,
         "state": r.state,
         "region": r.region,
+        "current_location": format_current_location(r.latitude, r.longitude),
         "time": r.time,
         "crime_type": r.crime_type,
         "actor_type": r.actor_type,

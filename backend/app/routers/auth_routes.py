@@ -7,7 +7,7 @@ import os
 import smtplib
 from typing import Literal, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from ..core.config import ALLOW_OPEN_POLICE_REGISTER, POLICE_REGISTER_SECRET
 from ..core.security import create_access_token, hash_password, verify_password
 from ..core.state_regions import STATE_REGIONS
 from ..db import Otp, SessionLocal, User
+from ..deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -231,6 +232,19 @@ def login(payload: LoginRequest):
     return {
         "status": "success",
         "token": token,
+        "user": {
+            "username": user.username,
+            "email": user.email,
+            "state": user.state,
+            "role": user.role,
+        },
+    }
+
+
+@router.get("/me")
+def me(user: User = Depends(get_current_user)):
+    return {
+        "status": "success",
         "user": {
             "username": user.username,
             "email": user.email,

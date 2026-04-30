@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AlertOctagon } from "lucide-react";
-import { API_BASE, authHeaders } from "../../lib/api";
+import { API_BASE, authHeaders, clearAuthSession } from "../../lib/api";
 
 async function captureSnapshotBlob() {
   const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -23,6 +24,7 @@ async function captureSnapshotBlob() {
  */
 export function PanicFab({ onStatus, variant = "fab" }) {
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
 
   const run = async () => {
     if (!localStorage.getItem("crime_token")) {
@@ -43,6 +45,7 @@ export function PanicFab({ onStatus, variant = "fab" }) {
       const fd = new FormData();
       fd.append("latitude", String(pos.coords.latitude));
       fd.append("longitude", String(pos.coords.longitude));
+      fd.append("incident_time", new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
       if (blob) fd.append("snapshot", blob, "panic.jpg");
 
       const res = await fetch(`${API_BASE}/panic/`, {
@@ -51,7 +54,15 @@ export function PanicFab({ onStatus, variant = "fab" }) {
         body: fd
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.detail || "Panic send failed");
+      if (!res.ok) {
+        if (res.status === 401) {
+          clearAuthSession();
+          onStatus?.("Session expired. Please login again.", "error");
+          navigate("/login", { replace: true });
+          return;
+        }
+        throw new Error(data.detail || "Panic send failed");
+      }
       onStatus?.(`Panic sent. Report ${data.report_id}`, "success");
     } catch (e) {
       onStatus?.(e.message || "Panic failed", "error");

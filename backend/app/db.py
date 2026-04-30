@@ -73,6 +73,7 @@ class Report(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    current_location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     user_email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     is_panic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 

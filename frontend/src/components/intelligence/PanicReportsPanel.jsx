@@ -88,12 +88,15 @@ export function PanicReportsPanel({ reports, onViewEvidence, onUpdateStatus }) {
                 {panicReports.map((r) => {
                   const id = r.public_id || r.id;
                   const meta = statusMeta[r.status] || statusMeta.Pending;
+                  const hasCoords = r.latitude !== null && r.latitude !== undefined && r.longitude !== null && r.longitude !== undefined;
+                  const locationLabel = r.current_location || (hasCoords
+                    ? `${Number(r.latitude).toFixed(5)}, ${Number(r.longitude).toFixed(5)}`
+                    : `${r.region}${r.state ? `, ${r.state}` : ""}`);
                   return (
                     <tr key={id} className="hover:bg-rose-500/10 transition">
                       <td className="px-4 py-3 font-mono text-xs text-rose-100">{id}</td>
                       <td className="px-4 py-3 text-rose-100">
-                        {r.region}
-                        {r.state ? <span className="text-rose-200/70">, {r.state}</span> : null}
+                        {locationLabel}
                       </td>
                       <td className="px-4 py-3 text-rose-100">{r.time}</td>
                       <td className="px-4 py-3">

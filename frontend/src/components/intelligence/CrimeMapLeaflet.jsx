@@ -114,7 +114,11 @@ export function CrimeMapLeaflet({ selectedState, blinkKey, refreshKey = 0, varia
               <div className="min-w-[160px] space-y-1 text-xs">
                 <div className="font-semibold">{i.crime_type}</div>
                 <div>
-                  {i.region}, {i.state}
+                  {i.current_location || (
+                    i.latitude !== null && i.latitude !== undefined && i.longitude !== null && i.longitude !== undefined
+                      ? `${Number(i.latitude).toFixed(5)}, ${Number(i.longitude).toFixed(5)}`
+                      : `${i.region}, ${i.state}`
+                  )}
                 </div>
                 <div className="opacity-70">{i.created_at}</div>
               </div>

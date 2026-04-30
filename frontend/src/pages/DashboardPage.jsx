@@ -164,7 +164,7 @@ export default function DashboardPage() {
     if (msg.type === "crime_report" || msg.type === "panic") {
       notify(
         msg.type === "panic"
-          ? `🚨 Panic / emergency signal: ${msg.region}`
+          ? `🚨 Panic / emergency signal: ${msg.region}, ${msg.state}`
           : `Live alert: ${msg.crime_type} (${msg.region})`,
         "error"
       );
@@ -344,9 +344,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Crime Prediction AI Panel */}
-      <div className="glass-card p-3.5 shrink-0">
-        <CrimePredictionPanel />
-      </div>
+      {role !== "police" && (
+        <div className="glass-card p-3.5 shrink-0">
+          <CrimePredictionPanel />
+        </div>
+      )}
 
       {/* Report tracking */}
       <div className="glass-card p-3.5 min-h-0 flex-1">

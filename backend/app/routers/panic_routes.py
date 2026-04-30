@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..core.state_regions import STATE_REGIONS
 from ..db import Report, User
 from ..deps import get_current_user, get_db
-from ..services.geo import gps_to_state_region_hint
+from ..services.geo import format_current_location, gps_to_state_region_hint
 from ..services.notify_service import broadcast_targets_for_report, create_notification
 from ..services.ws_hub import hub
 
@@ -23,6 +23,7 @@ async def panic_alert(
     user: Annotated[User, Depends(get_current_user)],
     latitude: float = Form(...),
     longitude: float = Form(...),
+    incident_time: Optional[str] = Form(None),
     snapshot: Optional[UploadFile] = File(None),
 ):
     st_hint, rg_hint = gps_to_state_region_hint(latitude, longitude)
@@ -43,7 +44,7 @@ async def panic_alert(
         public_id=public_id,
         state=st_hint,
         region=rg_hint,
-        time=datetime.now(timezone.utc).strftime("%I:%M %p"),
+        time=(incident_time or datetime.now().astimezone().strftime("%I:%M %p")),
         crime_type="Emergency",
         actor_type="Individual",
         weapon="Unknown",
@@ -54,6 +55,7 @@ async def panic_alert(
         status="investigating",
         latitude=latitude,
         longitude=longitude,
+        current_location=format_current_location(latitude, longitude),
         user_email=user.email,
         is_panic=True,
         file_name=file_name,
@@ -70,6 +72,7 @@ async def panic_alert(
             "public_id": public_id,
             "state": st_hint,
             "region": rg_hint,
+            "current_location": format_current_location(latitude, longitude),
             "latitude": latitude,
             "longitude": longitude,
             "user": user.email,

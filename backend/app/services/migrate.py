@@ -59,6 +59,8 @@ def run_schema_migrations(engine: Engine) -> None:
                     conn.execute(text("ALTER TABLE reports ADD COLUMN voice_bytes BYTEA"))
             if "voice_transcript" not in report_cols:
                 conn.execute(text("ALTER TABLE reports ADD COLUMN voice_transcript TEXT"))
+            if "current_location" not in report_cols:
+                conn.execute(text("ALTER TABLE reports ADD COLUMN current_location VARCHAR(255)"))
 
             rows = conn.execute(text("SELECT id FROM reports WHERE public_id IS NULL OR public_id = ''")).fetchall()
             for (rid,) in rows:

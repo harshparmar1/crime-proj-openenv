@@ -128,6 +128,7 @@ def map_incidents(
                 "public_id": r.public_id,
                 "state": r.state,
                 "region": r.region,
+                "current_location": r.current_location,
                 "crime_type": r.crime_type,
                 "latitude": lat,
                 "longitude": lng,

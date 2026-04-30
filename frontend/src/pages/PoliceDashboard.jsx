@@ -203,8 +203,7 @@ function EvidenceModal({ open, onClose, report }) {
               {[
                 { label: "Reporter Email", value: report.user_email || "— (submitted without login)", icon: User },
                 { label: "Phone",          value: report.phone || "—",                               icon: Phone },
-                { label: "Location",       value: `${report.region}, ${report.state}`,               icon: MapPin },
-                ...(report.latitude != null ? [{ label: "GPS", value: `${Number(report.latitude).toFixed(5)}, ${Number(report.longitude).toFixed(5)}`, icon: MapPin }] : []),
+                { label: "Location",       value: report.current_location || `${report.region}, ${report.state}`, icon: MapPin },
               ].map(({ label, value, icon: Icon }) => (
                 <div key={label} className="rounded-xl border border-white/8 bg-white/3 p-3">
                   <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
@@ -295,7 +294,7 @@ export default function PoliceDashboard() {
         try {
           const msg = JSON.parse(ev.data);
           if (msg?.type === "alert" || msg?.type === "crime_report" || msg?.type === "panic") {
-            const location   = msg.region || msg.location || "Unknown";
+            const location   = msg.current_location || msg.location || (msg.latitude != null && msg.longitude != null ? `${Number(msg.latitude).toFixed(5)}, ${Number(msg.longitude).toFixed(5)}` : msg.region || msg.state || "Unknown");
             const crime_type = msg.crime_type || (msg.type === "panic" ? "PANIC" : "Alert");
             setAlerts((a) => [{ id: msg.public_id || `ws_${Date.now()}`, crime_type, location, time: nowClock(), ts: Date.now() }, ...a].slice(0, 6));
             notify(`LIVE: ${crime_type} · ${location}`, "error");
@@ -317,13 +316,14 @@ export default function PoliceDashboard() {
     (async () => {
       setLoading(true);
       try {
-        const data = await apiGet("/reports");
+          const data = await apiGet("/reports");
         if (!cancelled && Array.isArray(data)) {
           setReports(data.map((r) => ({
             ...r,
             status:     r.status ? r.status[0].toUpperCase() + r.status.slice(1) : "Pending",
             crime_type: r.crime_type || r.crime || "Unknown",
             region:     r.region || r.location || "Unknown",
+              current_location: r.current_location || null,
             time:       r.time || r.created_at || nowClock(),
           })));
         }
@@ -518,15 +518,6 @@ export default function PoliceDashboard() {
                   <StatCard label="Resolved"      value={stats.resolved}  icon={CheckCircle2}    color="emerald" sub="Closed cases" />
                 </div>
 
-                {/* Crime Prediction AI */}
-                <motion.section
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 }}
-                  className="glass-card p-4 md:p-5"
-                >
-                  <CrimePredictionPanel />
-                </motion.section>
 
                 {/* Live alerts */}
                 <div>
