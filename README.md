@@ -134,3 +134,7 @@ python baseline.py
 ## License
 
 MIT (adapt as needed for your deployment).
+
+---
+**System Version:** 3.0.0 | **Last Updated:** August 2026
+
