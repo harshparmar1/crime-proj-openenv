@@ -26,11 +26,15 @@ def seed_sample_data(db: Session) -> None:
     
     # Create sample users (officers)
     users_data = [
-        {"id": 101, "username": "officer_smith", "email": "smith@police.com", "state": "Maharashtra"},
-        {"id": 102, "username": "officer_johnson", "email": "johnson@police.com", "state": "Maharashtra"},
-        {"id": 103, "username": "officer_williams", "email": "williams@police.com", "state": "Karnataka"},
-        {"id": 104, "username": "detective_brown", "email": "brown@police.com", "state": "Maharashtra"},
+        {"id": 101, "username": "officer_smith", "email": "smith@police.com", "password": "password123", "state": "Maharashtra", "role": "police", "verified": True},
+        {"id": 102, "username": "officer_johnson", "email": "johnson@police.com", "password": "password123", "state": "Maharashtra", "role": "police", "verified": True},
+        {"id": 103, "username": "officer_williams", "email": "williams@police.com", "password": "password123", "state": "Karnataka", "role": "police", "verified": True},
+        {"id": 104, "username": "detective_brown", "email": "brown@police.com", "password": "password123", "state": "Maharashtra", "role": "police", "verified": True},
     ]
+    for udata in users_data:
+        if not db.query(User).filter(User.id == udata["id"]).first():
+            db.add(User(**udata))
+    db.commit()
     
     # Create sample officers
     officers_data = [
@@ -273,8 +277,8 @@ def seed_sample_data(db: Session) -> None:
         db.add(log)
     db.commit()
     
-    print(f"✓ Created {len(officers)} officers")
-    print(f"✓ Created {len(cases)} cases")
-    print(f"✓ Created {len(suspects)} suspects")
-    print(f"✓ Created {len(beats_data)} beat risk zones")
+    print(f"[+] Created {len(officers)} officers")
+    print(f"[+] Created {len(cases)} cases")
+    print(f"[+] Created {len(suspects)} suspects")
+    print(f"[+] Created {len(beats_data)} beat risk zones")
     print("Database seeding complete!")

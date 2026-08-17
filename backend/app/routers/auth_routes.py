@@ -35,6 +35,8 @@ def _send_otp_email(to_email: str, otp: str) -> bool:
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     smtp_user = os.getenv("SMTP_USER")
     smtp_pass = os.getenv("SMTP_PASS")
+    if smtp_pass:
+        smtp_pass = smtp_pass.replace(" ", "").strip()
     smtp_from = os.getenv("SMTP_FROM", smtp_user or "noreply@crime-dashboard.local")
 
     if not smtp_host or not smtp_user or not smtp_pass:
@@ -47,11 +49,15 @@ def _send_otp_email(to_email: str, otp: str) -> bool:
     msg["To"] = to_email
     msg.set_content(f"Your OTP is {otp}. It is valid for 10 minutes.")
 
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
-        server.starttls()
-        server.login(smtp_user, smtp_pass)
-        server.send_message(msg)
-    return True
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"[OTP] Failed to send email via SMTP ({e}). Fallback OTP for {to_email}: {otp}")
+        return False
 
 
 class RegisterRequest(BaseModel):

@@ -424,12 +424,6 @@ export default function PoliceDashboard() {
               
               {[
                 { id: "dashboard",     label: "Dashboard",              icon: Activity,    color: "sky" },
-                { id: "dispatch",      label: "Dispatch & Resources",   icon: Radio,       color: "emerald" },
-                { id: "case-intel",    label: "Case Intelligence",      icon: FaClipboardList, color: "violet" },
-                { id: "suspects",      label: "Suspect Database",       icon: User,        color: "rose" },
-                { id: "patrol",        label: "Patrol Intelligence",    icon: MapPin,      color: "amber" },
-                { id: "investigation", label: "Investigation Tools",    icon: Search,      color: "indigo" },
-                { id: "analytics",     label: "Performance Analytics",  icon: BarChart3,   color: "cyan" },
               ].map(({ id, label, icon: Icon, color }) => {
                 const isActive = active === id;
                 const colorClasses = {
