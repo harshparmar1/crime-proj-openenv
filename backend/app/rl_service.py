@@ -12,14 +12,28 @@ from sqlalchemy.orm import Session
 
 from .db import Report
 
-# Import OpenEnv from the sibling package.
-OPENENV_ROOT = Path(__file__).resolve().parents[2] / "openenv"
-if str(OPENENV_ROOT) not in sys.path:
-    sys.path.insert(0, str(OPENENV_ROOT))
-
-from openenv.environment import CrimeOpenEnv  # type: ignore
-from openenv.models import Observation  # type: ignore
-from openenv.qtrainer import policy_predict_assign_zone, train_q_policy  # type: ignore
+# Try importing OpenEnv from local backend package or sibling repo directory
+try:
+    from openenv.environment import CrimeOpenEnv  # type: ignore
+    from openenv.models import Observation  # type: ignore
+    from openenv.qtrainer import policy_predict_assign_zone, train_q_policy  # type: ignore
+except ImportError:
+    for candidate in [
+        Path(__file__).resolve().parents[1],  # backend/
+        Path(__file__).resolve().parents[2] / "openenv",  # repo/openenv
+        Path(__file__).resolve().parents[2],  # repo/
+    ]:
+        if str(candidate) not in sys.path:
+            sys.path.insert(0, str(candidate))
+    try:
+        from openenv.environment import CrimeOpenEnv  # type: ignore
+        from openenv.models import Observation  # type: ignore
+        from openenv.qtrainer import policy_predict_assign_zone, train_q_policy  # type: ignore
+    except ImportError:
+        CrimeOpenEnv = None
+        Observation = None
+        policy_predict_assign_zone = None
+        train_q_policy = None
 
 
 def parse_time_of_day(time_str: str) -> str:
@@ -99,6 +113,9 @@ def train_or_load_q_for_state(db: Session, state: str) -> Dict:
         _CACHE[state] = RlCacheEntry(max_report_id=0, q_table={}, trained_at=datetime.utcnow())
         return {}
 
+    if CrimeOpenEnv is None or train_q_policy is None:
+        return {}
+
     dataset, _crime_stats, _frequency = _build_env_dataset(rows)
 
     # RL training: cap dataset size to reduce episode runtime.
@@ -141,13 +158,16 @@ def get_rl_zones_for_state(db: Session, state: str, regions: List[str]) -> List[
     zones = []
     for rg in regions:
         tod = _most_common_time_of_day(rows, rg)
-        obs = Observation(
-            current_reports=[],
-            selected_region=rg,
-            crime_stats=dict(crime_stats),
-            time_of_day=tod,
-        )
-        predicted_risk = policy_predict_assign_zone(q_table, obs) if q_table else "Low"
+        if policy_predict_assign_zone and Observation and q_table:
+            obs = Observation(
+                current_reports=[],
+                selected_region=rg,
+                crime_stats=dict(crime_stats),
+                time_of_day=tod,
+            )
+            predicted_risk = policy_predict_assign_zone(q_table, obs)
+        else:
+            predicted_risk = risk_from_frequency(frequency.get(rg, 0))
         zones.append(
             {
                 "state": state,
