@@ -12,8 +12,16 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sess
 
 
 def _database_url() -> str:
-    load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env", override=False)
-    return os.getenv("DATABASE_URL", "sqlite:///./crime_reports.db")
+    env_file = Path(__file__).resolve().parent.parent / ".env"
+    if env_file.exists():
+        load_dotenv(dotenv_path=env_file, override=False)
+    url = os.getenv("DATABASE_URL", "sqlite:///./crime_reports.db")
+    # Normalize legacy or cloud postgres URLs to use psycopg 3
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+psycopg://", 1)
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
+        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
 
 
 DATABASE_URL = _database_url()
@@ -21,6 +29,11 @@ DATABASE_URL = _database_url()
 _engine_kwargs = {"pool_pre_ping": True}
 if DATABASE_URL.startswith("sqlite"):
     _engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    # Production PostgreSQL connection pool settings
+    _engine_kwargs["pool_recycle"] = 300
+    _engine_kwargs["pool_size"] = 10
+    _engine_kwargs["max_overflow"] = 20
 
 engine = create_engine(DATABASE_URL, **_engine_kwargs)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, class_=Session)

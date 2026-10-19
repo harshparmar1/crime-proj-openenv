@@ -22,6 +22,9 @@ services:
       - postgres
     environment:
       - DATABASE_URL=postgresql+psycopg://crime:crimepass@postgres:5432/crime_dashboard
+      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+      - ALLOW_OPEN_POLICE_REGISTER=true
+      - JWT_SECRET=dev-secret-key-change-in-production-min-32-chars
     volumes:
       - ../backend:/app
 
@@ -31,6 +34,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000/ws/live
     depends_on:
       - backend
 
@@ -38,10 +44,12 @@ services:
     build:
       context: ../openenv
       dockerfile: Dockerfile
+    ports:
+      - "7860:7860"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
-    command: ["python", "baseline.py"]
+    command: ["python", "app.py"]
 
 volumes:
   postgres_data:

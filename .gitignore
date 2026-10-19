@@ -1,10 +1,29 @@
+# Python & Virtual Environments
 **/__pycache__/
 **/.pytest_cache/
 **/.venv/
+venv/
+*.pyc
+
+# Node & Frontend Build
 **/node_modules/
 **/dist/
-.env
-backend/crime_reports.db
-backend/uploads/
-node_modules/
+dist/
 build/
+.vercel
+
+# Environment variables & secrets (NEVER commit secrets)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+**/.env
+**/.env.local
+!**/.env.example
+
+# Databases & local media
+backend/crime_reports.db
+*.db
+backend/uploads/
+uploads/

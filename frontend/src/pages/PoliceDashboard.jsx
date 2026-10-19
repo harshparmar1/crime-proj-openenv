@@ -13,7 +13,7 @@ import {
 import { Toast } from "../components/Toast";
 import { CrimePredictionPanel } from "../components/intelligence/CrimePredictionPanel";
 import { PanicReportsPanel } from "../components/intelligence/PanicReportsPanel";
-import { API_BASE, apiGet, apiPatch, authHeaders } from "../lib/api";
+import { API_BASE, WS_BASE, apiGet, apiPatch, authHeaders } from "../lib/api";
 
 
 
@@ -289,7 +289,7 @@ export default function PoliceDashboard() {
   useEffect(() => {
     let ws;
     try {
-      ws = new WebSocket(`ws://localhost:8000/ws/alerts?token=${encodeURIComponent(token || "")}`);
+      ws = new WebSocket(`${WS_BASE}/ws/live?token=${encodeURIComponent(token || "")}`);
       ws.onmessage = (ev) => {
         try {
           const msg = JSON.parse(ev.data);

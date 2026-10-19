@@ -5,14 +5,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load .env
+# Load .env without overriding existing environment variables
 _backend_root = Path(__file__).resolve().parent.parent
-load_dotenv(dotenv_path=_backend_root / ".env", override=True)
+load_dotenv(dotenv_path=_backend_root / ".env", override=False)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .core.config import CORS_ORIGINS
+from .core.config import CORS_ORIGINS, CORS_ORIGIN_REGEX
 from .db import Base, engine
 from .routers import (
     ai_routes,
@@ -49,11 +49,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-_origins = CORS_ORIGINS if CORS_ORIGINS != ["*"] else ["*"]
+_allow_all = "*" in CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_origins,
-    allow_credentials=True,
+    allow_origins=["*"] if _allow_all else CORS_ORIGINS,
+    allow_origin_regex=None if _allow_all else CORS_ORIGIN_REGEX,
+    allow_credentials=False if _allow_all else True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -7,11 +7,14 @@ GET  /crime-time-analysis → Hourly pattern + peak window
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from ..deps import get_db
 from ..services.predict_service import (
@@ -71,7 +74,8 @@ async def predict_crime(
             longitude=body.longitude,
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {exc}") from exc
+        logger.error("Prediction failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Crime risk prediction service temporarily unavailable") from exc
 
     # Real-time alert broadcast for high-risk predictions
     if result["risk_score"] > 75:
@@ -103,7 +107,8 @@ def get_crime_heatmap(
     try:
         return crime_heatmap(db, state=state)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Heatmap generation failed: {exc}") from exc
+        logger.error("Heatmap generation failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Heatmap generation failed") from exc
 
 
 @router.get("/crime-time-analysis")
@@ -118,4 +123,5 @@ def get_crime_time_analysis(
     try:
         return crime_time_analysis(db, state=state)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Time analysis failed: {exc}") from exc
+        logger.error("Time analysis failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Crime time analysis failed") from exc
