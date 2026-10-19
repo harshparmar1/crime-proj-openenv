@@ -15,7 +15,10 @@ def _database_url() -> str:
     env_file = Path(__file__).resolve().parent.parent / ".env"
     if env_file.exists():
         load_dotenv(dotenv_path=env_file, override=False)
-    url = os.getenv("DATABASE_URL", "sqlite:///./crime_reports.db")
+    raw_url = os.getenv("DATABASE_URL", "sqlite:///./crime_reports.db")
+    url = (raw_url or "").strip().strip("'\"")
+    if not url:
+        url = "sqlite:///./crime_reports.db"
     # Normalize legacy or cloud postgres URLs to use psycopg 3
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+psycopg://", 1)
